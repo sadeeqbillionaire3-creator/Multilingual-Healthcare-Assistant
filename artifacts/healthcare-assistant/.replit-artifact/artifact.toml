@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Healthcare Assistant"
+description = "A multilingual healthcare assistant for general health guidance, emergency awareness, and optional JPG/PNG image context in English, Hausa, French, and Arabic."
+version = "1.0.0"
+id = "artifacts/healthcare-assistant"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20372
+
+[services.development]
+run = "pnpm --filter @workspace/healthcare-assistant run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/healthcare-assistant", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/healthcare-assistant/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20372"
+BASE_PATH = "/"

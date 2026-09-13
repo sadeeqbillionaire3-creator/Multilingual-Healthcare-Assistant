@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: chat
+    description: Multilingual healthcare assistant operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /chat:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a healthcare question
+      description: Returns general health guidance and emergency-awareness messaging.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: Healthcare assistant response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: Invalid request
+        "413":
+          description: Request too large
+        "429":
+          description: Rate limit exceeded
+        "502":
+          description: Gemini request failed
+        "503":
+          description: Assistant is not configured
 components:
   schemas:
     HealthStatus:
@@ -33,4 +64,29 @@ components:
           type: string
       required:
         - status
+    ChatInput:
+      type: object
+      required:
+        - message
+        - lang
+      properties:
+        message:
+          type: string
+          maxLength: 2000
+        lang:
+          type: string
+          enum: [en, ha, fr, ar]
+        image:
+          type: ["string", "null"]
+          description: Optional JPG/PNG data URL or raw base64 image.
+    ChatResponse:
+      type: object
+      required:
+        - reply
+        - is_emergency
+      properties:
+        reply:
+          type: string
+        is_emergency:
+          type: boolean
 
