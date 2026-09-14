@@ -1,20 +1,29 @@
 {
-  "background_color": "#000000",
-  "description": "MediLingua AI is Nigeria's multilingual healthcare assistant, supporting English, Hausa, and Arabic. Get instant health guidance through text or voice, automatic emergency detection, and downloadable conversation reports — all with your chat history kept private on your device.",
-  "dir": "ltr",
-  "display": "standalone",
-  "name": "MediLinguaAI",
-  "orientation": "any",
-  "scope": "/",
+  "name": "MediLingua AI - Multilingual Healthcare Assistant",
   "short_name": "MediLingua",
+  "description": "MediLingua AI is Nigeria's multilingual healthcare assistant, supporting English, Hausa, and Arabic. Get instant health guidance through text or voice, automatic emergency detection, and downloadable conversation reports — all with your chat history kept private on your device.",
   "start_url": "/",
-  "theme_color": "#ffffff",
-  "icons": [
-    { "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192" },
-    { "src": "/icons/icon-512.png", "type": "image/png", "sizes": "512x512" }
-  ],
-  "id": "com.medilingua.ai",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "dir": "ltr",
   "lang": "en",
-  "display_override": ["window-controls-overlay"],
-  "categories": ["health", "medical"]
+  "theme_color": "#16a34a",
+  "background_color": "#ffffff",
+  "id": "/",
+  "categories": ["health", "medical"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
