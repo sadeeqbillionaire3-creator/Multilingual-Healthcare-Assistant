@@ -1,3 +1,5 @@
+import { logChat } 
+  from"../lib/analyticStore";
 import { Router, type IRouter, type Request } from "express";
 import { GoogleGenAI } from "@google/genai";
 import {
@@ -215,7 +217,7 @@ router.post("/chat", async (request, response) => {
     }
   }
 
-  const isEmergency = checkEmergency(message);
+  const isEmergency = checkEmergency(message);logChat({ lang, isEmergency, message: message.slice(0,80) });
   const emergencyNotice = isEmergency ? emergencyMessages[lang] : "";
   const disclaimer = disclaimers[lang];
   const emergencyInstruction = emergencyNotice
@@ -254,7 +256,9 @@ ${message}`;
       reply = `${reply}\n\n${disclaimer}`;
     }
 
-    const output = SendChatMessageResponse.parse({
+  logChat({ lang: lang, isEmergency: isEmergency, message: message });
+
+      const output = SendChatMessageResponse.parse({
       reply,
       is_emergency: isEmergency,
     });
