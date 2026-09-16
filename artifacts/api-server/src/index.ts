@@ -1,5 +1,9 @@
+import { inject } from "@vercel/analytics";
 import app from "./app";
 import { logger } from "./lib/logger";
+
+// Initialize Vercel Web Analytics
+inject();
 
 const rawPort = process.env["PORT"];
 
