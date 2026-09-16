@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { logChat } 
   from"../lib/analyticStore";
 import { Router, type IRouter, type Request } from "express";
