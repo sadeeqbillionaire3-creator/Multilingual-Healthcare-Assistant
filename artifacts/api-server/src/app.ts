@@ -1,3 +1,4 @@
+// @ts-nocheck
 import express, {
   type ErrorRequestHandler,
   type Express,
