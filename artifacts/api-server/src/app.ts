@@ -6,8 +6,8 @@ import express, {
 import cors from "cors";
 import pinoHttp from "pino-http";
 import routers from './routes/index.js'
-import analyticsRouters from "./routes/analytics/index.js"ko
-import { logger } from "./lib/logger/index.js"
+import analyticsRouters from "./routes/analytics.js"
+import { logger } from "./lib/logger.js"
 
 const app: Express = express();
 
