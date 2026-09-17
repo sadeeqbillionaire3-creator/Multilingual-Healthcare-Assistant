@@ -1,13 +1,13 @@
 // @ts-nocheck
 import { logChat } 
-  from"../lib/analyticStore";
+  from"../lib/analyticStore.js"
 import { Router, type IRouter, type Request } from "express";
 import { GoogleGenAI } from "@google/genai";
 import {
   SendChatMessageBody,
   SendChatMessageResponse,
 } from "@workspace/api-zod";
-import { logger } from "../lib/logger";
+import { logger } from "../lib/logger.js"
 
 const router: IRouter = Router();
 

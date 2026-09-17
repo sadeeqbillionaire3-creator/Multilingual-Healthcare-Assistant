@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { analyticStore } from "../lib/analyticStore";
+import { analyticStore } from "../lib/analyticStore.js";
 
 const router = Router();
 
-router.get("/", (req, res) => {
+router.get("/", (_req, res) => {
   res.json(analyticStore);
 });
 
