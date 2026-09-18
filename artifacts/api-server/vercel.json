@@ -2,8 +2,5 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "framework": null,
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/dist/index.mjs" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
