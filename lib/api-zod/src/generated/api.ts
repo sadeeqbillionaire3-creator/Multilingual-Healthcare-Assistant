@@ -27,7 +27,7 @@ export const sendChatMessageBodyMessageMax = 2000;
 
 export const SendChatMessageBody = zod.object({
   "message": zod.string().max(sendChatMessageBodyMessageMax),
-  "lang": zod.enum(['en', 'ha', 'fr', 'ar']),
+  "lang": zod.enum(['en', 'ha', 'yo', 'ig', 'pcm', 'fr', 'ar']),
   "image": zod.string().nullish().describe('Optional JPG/PNG data URL or raw base64 image.')
 })
 

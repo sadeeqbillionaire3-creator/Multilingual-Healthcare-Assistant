@@ -15,6 +15,9 @@ export type ChatInputLang = typeof ChatInputLang[keyof typeof ChatInputLang];
 export const ChatInputLang = {
   en: 'en',
   ha: 'ha',
+  yo: 'yo',
+  ig: 'ig',
+  pcm: 'pcm',
   fr: 'fr',
   ar: 'ar',
 } as const;

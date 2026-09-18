@@ -75,7 +75,7 @@ components:
           maxLength: 2000
         lang:
           type: string
-          enum: [en, ha, fr, ar]
+          enum: [en, ha, yo, ig, pcm, fr, ar]
         image:
           type: ["string", "null"]
           description: Optional JPG/PNG data URL or raw base64 image.
