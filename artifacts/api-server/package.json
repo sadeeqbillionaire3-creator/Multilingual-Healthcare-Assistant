@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.52.0",
+    "@vercel/analytics": "^2.0.1",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
