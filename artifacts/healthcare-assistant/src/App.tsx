@@ -51,7 +51,7 @@ const queryClient = new QueryClient();
 const HISTORY_KEY = 'medilingua-chat-history-v1';
 const DASHBOARD_PASSWORD = 'medilingua-demo';
 
-type Language = 'en' | 'ha' | 'fr' | 'ar';
+type Language = 'en' | 'ha' | 'fr' | 'ar' | 'yo' | 'ig' | 'pcm';
 type Message = {
   id: string;
   role: 'user' | 'assistant';
@@ -76,15 +76,21 @@ type SpeechWindow = Window & {
   webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
 };
 
-const languages: { code: Language; label: string; native: string }[] = [
+  const languages: { code: Language; label: string; native: string }[] = [
   { code: 'en', label: 'English', native: 'EN' },
   { code: 'ha', label: 'Hausa', native: 'HA' },
+  { code: 'yo', label: 'Yoruba', native: 'YO' },
+  { code: 'ig', label: 'Igbo', native: 'IG' },
+  { code: 'pcm', label: 'Pidgin', native: 'PG' },
   { code: 'fr', label: 'Français', native: 'FR' },
   { code: 'ar', label: 'العربية', native: 'AR' },
 ];
 
 const speechLocales = [
   { value: 'ha-NG', label: 'Hausa' },
+  { value: 'yo-NG', label: 'Yoruba' },
+  { value: 'ig-NG', label: 'Igbo' },
+  { value: 'en-NG', label: 'Pidgin' },
   { value: 'en-US', label: 'English' },
   { value: 'fr-FR', label: 'Français' },
   { value: 'ar-SA', label: 'العربية' },
@@ -95,7 +101,7 @@ const copy = {
     brand: 'MediLingua AI',
     tagline: "Nigeria's multilingual care guide",
     title: "MediLingua AI — Nigeria's First Multilingual Healthcare Assistant",
-    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French & Arabic | Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
+    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French, Arabic,Yoruba,Igbo & Pidgin | Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
     privacy: 'Private by design',
     privacyText: 'Your chat history stays locally on this device only.',
     how: 'How it helps',
@@ -145,7 +151,7 @@ const copy = {
     brand: 'MediLingua AI',
     tagline: 'Jagoran lafiya cikin harsuna da yawa',
     title: "MediLingua AI — Nigeria's First Multilingual Healthcare Assistant",
-    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French & Arabic | Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
+    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French,Arabic, Yoruba , Igbo & Pidgin| Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
     privacy: 'Sirri tun daga farko',
     privacyText: 'Tarihin hirarka yana nan a wannan na’ura kawai.',
     how: 'Yadda yake taimakawa',
@@ -195,7 +201,7 @@ const copy = {
     brand: 'MediLingua AI',
     tagline: 'Votre guide santé multilingue',
     title: "MediLingua AI — Nigeria's First Multilingual Healthcare Assistant",
-    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French & Arabic | Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
+    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French, Arabic, Yoruba,Igbo & Pidgin | Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
     privacy: 'Pensé pour la confidentialité',
     privacyText: 'Votre historique reste uniquement sur cet appareil.',
     how: 'Comment il aide',
@@ -245,7 +251,7 @@ const copy = {
     brand: 'MediLingua AI',
     tagline: 'مرشدك الصحي متعدد اللغات',
     title: "MediLingua AI — Nigeria's First Multilingual Healthcare Assistant",
-    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French & Arabic | Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
+    intro: 'Breaking Language Barriers in Healthcare | Supports Hausa, English, French,Arabic,Yoruba , Igbo & Pidgin| Voice, Image & Emergency Triage | Trusted for Rural & Urban Clinics',
     privacy: 'الخصوصية أولًا',
     privacyText: 'يُحفظ سجل المحادثة على هذا الجهاز فقط.',
     how: 'كيف يساعد',
@@ -303,7 +309,7 @@ const emergencyPhrases = [
   'saignement abondant', 'saigne beaucoup', 'inconscient', 'avc', 'crise cardiaque',
   'ألم في الصدر', 'صدري يؤلمني', 'لا أستطيع التنفس', 'صعوبة في التنفس',
   'ضيق التنفس', 'نزيف حاد', 'ينزف كثيرًا', 'فقدان الوعي', 'سكتة دماغية',
-  'نوبة قلبية',
+  'نوبة قلبية',  'irora àyà', 'mi o le mi', 'mgbu obi', 'enweghị m ike iku ume', 'chest dey pain me', 'i no fit breathe', 'blood dey comot well well',
 ];
 
 function readHistory(): Message[] {
