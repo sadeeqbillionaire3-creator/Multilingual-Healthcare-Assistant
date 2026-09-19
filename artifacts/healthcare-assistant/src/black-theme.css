@@ -1,68 +1,47 @@
-/* PREMIUM BLACK THEME - CLEAN VERSION */
+/* FIX HIDDEN TEXT - MAKE IT VISIBLE & BIG */
 body, html, #root {
   background: #000000 !important;
   color: white !important;
 }
 
-/* Main containers */
-main, div {
-  background: transparent !important;
+/* ALL TEXT - BIG AND WHITE */
+p, span, div, li {
+  color: #ffffff !important;
+  font-size: 17px !important;
+  line-height: 1.7 !important;
+  font-weight: 400 !important;
 }
 
-/* Chat area - clean */
-[class*="chat"], [class*="message"] {
-  background: #000000 !important;
+/* Chat messages - make super readable */
+[class*="message"], [class*="chat"] {
+  color: #ffffff !important;
+  font-size: 17px !important;
+  opacity: 1 !important;
 }
 
-/* User messages - premium gray bubble */
-[class*="user"] {
-  background: #1a1a1a !important;
-  border-radius: 20px !important;
-}
-
-/* AI messages - pure black with border */
-[class*="assistant"], [class*="bot"] {
-  background: #0a0a0a !important;
-  border: 1px solid #1f1f1f !important;
-  border-radius: 20px !important;
-}
-
-/* WRITING SHELL - VERY CLEAN & BIG */
-textarea, input[type="text"] {
-  background: #111111 !important;
-  border: 1px solid #2a2a2a !important;
-  border-radius: 28px !important;
-  min-height: 130px !important;
-  padding: 20px 24px !important;
-  font-size: 16px !important;
+/* User bubble text */
+div:has(> p) p {
   color: white !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-  outline: none !important;
-  transition: all 0.3s ease !important;
+  font-size: 16px !important;
 }
 
-textarea:focus, input[type="text"]:focus {
-  border: 1px solid #555 !important;
-  background: #151515 !important;
-  box-shadow: 0 6px 30px rgba(255,255,255,0.05) !important;
+/* Make the response text bright */
+.prose, .prose * {
+  color: #ffffff !important;
+  font-size: 17px !important;
+}
+
+/* Writing box - white text big */
+textarea, input {
+  background: #1a1a1a !important;
+  color: white !important;
+  font-size: 18px !important;
+  border: 2px solid #333 !important;
+  border-radius: 24px !important;
+  min-height: 110px !important;
 }
 
 textarea::placeholder {
-  color: #666 !important;
-}
-
-/* Send button - clean */
-button[type="submit"], button:has(svg) {
-  background: white !important;
-  color: black !important;
-  border-radius: 50% !important;
-  width: 44px !important;
-  height: 44px !important;
-  border: none !important;
-}
-
-/* Remove clutter */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #333 #000;
+  color: #888 !important;
+  font-size: 16px !important;
 }
