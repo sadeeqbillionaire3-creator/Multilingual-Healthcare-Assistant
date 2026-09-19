@@ -1,47 +1,13 @@
-/* FIX HIDDEN TEXT - MAKE IT VISIBLE & BIG */
-body, html, #root {
-  background: #000000 !important;
-  color: white !important;
+body, html, #root { background: #000 !important; }
+p, div, span, li { 
+  font-size: 20px !important; 
+  color: white !important; 
+  line-height: 1.6 !important;
 }
-
-/* ALL TEXT - BIG AND WHITE */
-p, span, div, li {
-  color: #ffffff !important;
-  font-size: 17px !important;
-  line-height: 1.7 !important;
-  font-weight: 400 !important;
-}
-
-/* Chat messages - make super readable */
-[class*="message"], [class*="chat"] {
-  color: #ffffff !important;
-  font-size: 17px !important;
-  opacity: 1 !important;
-}
-
-/* User bubble text */
-div:has(> p) p {
-  color: white !important;
-  font-size: 16px !important;
-}
-
-/* Make the response text bright */
-.prose, .prose * {
-  color: #ffffff !important;
-  font-size: 17px !important;
-}
-
-/* Writing box - white text big */
-textarea, input {
+textarea, input, [class*="input"], [class*="chat"] { 
+  font-size: 20px !important; 
+  color: white !important; 
   background: #1a1a1a !important;
-  color: white !important;
-  font-size: 18px !important;
-  border: 2px solid #333 !important;
-  border-radius: 24px !important;
-  min-height: 110px !important;
-}
-
-textarea::placeholder {
-  color: #888 !important;
-  font-size: 16px !important;
+  border-radius: 30px !important;
+  padding: 18px !important;
 }
