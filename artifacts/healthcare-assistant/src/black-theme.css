@@ -1,38 +1,20 @@
-body, html, #root { background: #0a0a0a !important; }
+/* AI message - big soft professional */
+div { font-size: 20px !important; }
 
-div[class*="chat"], div[class*="message"], p {
-  font-size: 20px !important;
-  line-height: 1.6 !important;
+/* Light blue AI bubble */
+div[style*="background: #f"] , div[style*="background:#f"], div[class*="assistant"]{
+  border-radius: 20px !important;
+  border-bottom-left-radius: 6px !important;
 }
 
-/* AI bubble - professional */
-div[class*="assistant"] > div, div[class*="ai"] > div {
-  background: #2a2a2a !important;
-  color: white !important;
-  border-radius: 18px !important;
-  border-top-left-radius: 4px !important;
-  padding: 16px 20px !important;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.5) !important;
+/* User dark bubbles - pill shape premium */
+div[style*="background: #1"], div[style*="background:#1"], div[class*="user"]{
+  border-radius: 24px !important;
+  border-bottom-right-radius: 6px !important;
+  padding: 12px 18px !important;
 }
 
-/* User bubble */
-div[class*="user"] > div {
-  border-radius: 18px !important;
-  border-bottom-right-radius: 4px !important;
-}
-
-/* Emergency card - clean */
-div:has(> a[href*="google"]) {
+/* Emergency card - perfect */
+div:has(> div[style*="urgent"]) , div[style*="border-left"]{
   border-radius: 16px !important;
-  background: #fff7f0 !important;
-}
-
-/* Bottom input - super premium */
-textarea, input {
-  font-size: 20px !important;
-  border-radius: 28px !important;
-  background: #1e1e1e !important;
-  border: 1px solid #333 !important;
-  color: white !important;
-  padding: 16px 20px !important;
 }
