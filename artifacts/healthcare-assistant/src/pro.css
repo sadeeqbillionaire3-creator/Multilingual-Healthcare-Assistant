@@ -1,29 +1,31 @@
-/* === PROFESSIONAL BORDER RADIUS === */
-* { font-size: 20px !important; }
-
-/* All chat bubbles = 22px premium */
-div[style*="border-radius"], div[class*="rounded"] {
+/* PROFESSIONAL PREMIUM LOOK - FINAL */
+div[class*="rounded"], div[style*="border-radius"] {
   border-radius: 22px !important;
 }
 
-/* AI bubble - ChatGPT style */
-div[style*="background-color: rgb(232"] , div[style*="background: rgb(232"] {
+/* AI bubble - light gray */
+div[style*="rgb(241"], div[style*="rgb(243"], div[style*="#f"] {
   border-radius: 22px !important;
-  border-top-left-radius: 6px !important;
+  border-bottom-left-radius: 6px !important;
 }
 
-/* User bubble - pill premium */
-div[style*="background-color: rgb(44"], div[style*="background: rgb(44"] {
+/* User bubble - dark */
+div[style*="rgb(15"], div[style*="rgb(17"], div[style*="rgb(31"] {
   border-radius: 24px !important;
-  border-top-right-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
 }
 
-/* Emergency card */
-div[style*="background-color: rgb(255, 247"], div[style*="background: rgb(255, 247"] {
-  border-radius: 20px !important;
+/* Input area */
+textarea, input, div:has(> textarea) {
+  border-radius: 28px !important;
 }
 
-/* Button inside */
-a, button {
-  border-radius: 14px !important;
+/* Emergency / cards / buttons */
+button, a, div[style*="border-left"] {
+  border-radius: 16px !important;
+}
+
+/* Font bigger & clean */
+* {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
