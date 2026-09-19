@@ -1,0 +1,29 @@
+/* === PROFESSIONAL BORDER RADIUS === */
+* { font-size: 20px !important; }
+
+/* All chat bubbles = 22px premium */
+div[style*="border-radius"], div[class*="rounded"] {
+  border-radius: 22px !important;
+}
+
+/* AI bubble - ChatGPT style */
+div[style*="background-color: rgb(232"] , div[style*="background: rgb(232"] {
+  border-radius: 22px !important;
+  border-top-left-radius: 6px !important;
+}
+
+/* User bubble - pill premium */
+div[style*="background-color: rgb(44"], div[style*="background: rgb(44"] {
+  border-radius: 24px !important;
+  border-top-right-radius: 6px !important;
+}
+
+/* Emergency card */
+div[style*="background-color: rgb(255, 247"], div[style*="background: rgb(255, 247"] {
+  border-radius: 20px !important;
+}
+
+/* Button inside */
+a, button {
+  border-radius: 14px !important;
+}
