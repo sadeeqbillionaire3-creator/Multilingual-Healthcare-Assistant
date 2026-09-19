@@ -1,0 +1,36 @@
+body, #root, .App, main {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+textarea, input {
+  background-color: #111111 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+textarea::placeholder, input::placeholder {
+  color: #888888 !important;
+}
+* {
+  color-scheme: dark;
+}
+/* CHATBOT BUBBLE BLACK */
+.message-list, .message-row, .message-column {
+  background-color: #000000 !important;
+}
+.message-bubble {
+  background-color: #111111 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+.from-user .message-bubble {
+  background-color: #222222 !important;
+  color: #ffffff !important;
+}
+.from-assistant .message-bubble {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #444444 !important;
+}
+.message-bubble p, .message-bubble span {
+  color: #ffffff !important;
+}
