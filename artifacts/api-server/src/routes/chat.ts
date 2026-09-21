@@ -238,10 +238,18 @@ ${message}`;
     const contents = imagePart
       ? [{ text: prompt }, imagePart]
       : [{ text: prompt }];
-    const result = await client.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
-      contents,
-    });
+    
+    let result;
+    try {
+      result = await client.models.generateContent({
+        model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+        contents,
+      });
+    } catch (e) {
+      console.error("Gemini 503:", e.message);
+      return response.status(200).json({ reply: "AI is busy now (503). Please try again in 1 minute. A sake gwadawa." });
+    }
+
 
     let reply = result.text?.trim() ?? "";
     if (!reply) {
