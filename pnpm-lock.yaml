@@ -31,7 +31,7 @@ catalogs:
       specifier: ^19.2.0
       version: 19.3.0
     '@vitejs/plugin-react':
-      specifier: ^5.0.4
+      specifier: 5.2.0
       version: 5.2.0
     class-variance-authority:
       specifier: ^0.7.1
