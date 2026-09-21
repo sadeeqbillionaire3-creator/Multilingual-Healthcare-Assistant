@@ -1,5 +1,5 @@
 import './black-theme.css';
-import {
+import react, {
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent,
