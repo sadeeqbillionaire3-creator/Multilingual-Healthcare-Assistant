@@ -571,28 +571,40 @@ function Home() {
 
   const startListening = async () => {
     if (!voiceSupported) return;
-    const SpeechRecognition = (window as SpeechWindow).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-    try {
-      if (navigator.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-      }
-      const recognition = new SpeechRecognition();
-      recognition.lang = voiceLanguage;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0]?.transcript ?? '')
-          .join(' ');
-        setDraft((current) => `${current}${current ? ' ' : ''}${transcript}`.trim());
-        setNotice('');
-      };
-      recognition.onerror = () => {
-        setNotice('Voice input could not start. Please check microphone permission.');
-        setIsListening(false);
-      };
+    
+const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+const audioChunksRef = React.useRef<Blob[]>([]);
+
+const startVoiceInput = async () => {
+  try {
+    // Use phone's own voice - 100% FREE, works for Hausa/Yoruba/Igbo/Pidgin accent
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { setNotice('Voice not supported on this browser - try Chrome'); return; }
+    const recog = new SR();
+    // en-NG understands Nigerian English + Pidgin + code-switch
+    recog.lang = 'en-NG';
+    recog.continuous = false;
+    recog.interimResults = false;
+    recog.onstart = () => { setIsListening(true); setNotice('🎤 Listening... speak in any language'); };
+    recog.onresult = (e:any) => { const text = e.results[0][0].transcript; setInput(text); setNotice('✅ Check text then press Tura'); };
+    recog.onerror = (e:any) => { console.log(e); setNotice('Mic error - try again'); setIsListening(false); };
+    recog.onend = () => { setIsListening(false); };
+    recog.start();
+    (window as any)._recog = recog;
+  } catch(err){ setNotice('Mic permission denied'); }
+};
+
+const stopVoiceInput = () => {
+  try { (window as any)._recog?.stop(); } catch{}
+  setIsListening(false); setNotice('');
+};
+// alias for old names
+const startListening = startVoiceInput;
+const stopListening = stopVoiceInput;
+const startVoice = startVoiceInput;
+const stopVoice = stopVoiceInput;
+
+
       recognition.onend = () => {
         setIsListening(false);
         recognitionRef.current = null;
