@@ -247,7 +247,7 @@ ${message}`;
       });
     } catch (e) {
       console.error("Gemini 503:", e.message);
-      return response.status(200).json({ reply: "AI is busy now (503). Please try again in 1 minute. A sake gwadawa." });
+      return response.status(200).json({ reply: "Ina aiki tukuru, don Allah jira kadan..." });
     }
 
 

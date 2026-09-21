@@ -1,4 +1,3 @@
-import React from 'react';
 'use client';
 
 import * as ResizablePrimitive from 'react-resizable-panels';

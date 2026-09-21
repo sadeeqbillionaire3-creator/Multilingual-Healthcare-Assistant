@@ -1,4 +1,3 @@
-import React from 'react';
 import * as React from 'react';
 import * as ToastPrimitives from '@radix-ui/react-toast';
 import { cn } from '@/lib/utils';
