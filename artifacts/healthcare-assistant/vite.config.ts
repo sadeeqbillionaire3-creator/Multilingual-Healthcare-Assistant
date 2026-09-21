@@ -2,11 +2,13 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal'
+import react from '@vitejs/plugin-react'
 
 const port = parseInt(process.env.PORT || "5173", 10);
 
 export default defineConfig(async () => ({
   plugins: [
+    react(),
     tailwindcss(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== 'production' && process.env.REPL_ID !== undefined
