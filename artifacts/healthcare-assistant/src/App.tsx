@@ -610,9 +610,11 @@ const stopVoice = stopVoiceInput;
         recognitionRef.current = null;
       };
       recognitionRef.current = recognition;
-      recognition.start();
-      setIsListening(true);
-    } catch {
+      try {
+
+       recognition.start();
+  setIsListening(true);
+  } catch {
       setNotice('Voice input could not start. Please check microphone permission.');
       setIsListening(false);
     }
