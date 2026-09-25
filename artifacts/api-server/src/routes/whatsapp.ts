@@ -1,8 +1,8 @@
 import { Router } from "express";
 const router = Router();
 
-// GET for verification
-router.get("/whatsapp", (req, res) => {
+// GET for verification - ROOT "/"
+router.get("/", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
@@ -16,8 +16,8 @@ router.get("/whatsapp", (req, res) => {
   }
 });
 
-// POST for messages
-router.post("/whatsapp", async (req, res) => {
+// POST for messages - ROOT "/"
+router.post("/", async (req, res) => {
   console.log("WhatsApp message received:", JSON.stringify(req.body, null, 2));
   
   const body = req.body;
