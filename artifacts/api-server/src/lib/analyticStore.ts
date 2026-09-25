@@ -2,7 +2,7 @@ export const analyticStore = {
   totalMessages: 0,
   chatsToday: 0,
   emergencyCount: 0,
-  languages: { en: 0, ha: 0, fr: 0, ar: 0 } as Record<string, number>,
+  languages: { en: 0, ha: 0, fr: 0, ar: 0,yo:0,ig:0 & pcm:0 } as Record<string, number>,
   lastReset: new Date().toDateString(),
   recent: [] as { lang: string; isEmergency: boolean; message: string; time: string }[],
 };

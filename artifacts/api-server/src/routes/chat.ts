@@ -161,15 +161,15 @@ ${message}`;
     let result;
     try {
       result = await client.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-3.0-flash",
+        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
         contents,
       });
     } catch (e) {
-      console.error("Gemini 3.0-flash error:", e.message);
+      console.error("Gemini-3-flash-preview error:", e.message);
       await new Promise(r => setTimeout(r, 2000));
       try {
         const retryResult = await client.models.generateContent({
-          model: process.env.GEMINI_MODEL || "gemini-3.0-flash",
+          model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
           contents,
         });
         result = retryResult;
