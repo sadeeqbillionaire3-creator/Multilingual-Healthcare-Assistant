@@ -20,16 +20,8 @@ outputType = "webview"
 artifactId = "artifacts/healthcare-assistant"
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pnpm --filter @workspace/healthcare-assistant run dev"
-cwd = "./artifacts/healthcare-assistant"
-waitForPort = 20372
-ensurePreviewReachable = "/"
-router = "path"
-
-[workflows.workflow.tasks.env]
-PORT = "20372"
-BASE_PATH = "/"
+task = "workflow.run"
+args = ""
 
 [[workflows.workflow]]
 name = "artifacts/api-server: API Server"
