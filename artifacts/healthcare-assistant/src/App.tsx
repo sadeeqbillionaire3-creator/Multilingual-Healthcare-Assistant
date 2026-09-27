@@ -606,7 +606,7 @@ const startVoice = startVoiceInput;
 const stopVoice = stopVoiceInput;
 
 
-      recognition.onend = () => {
+    recognition.onend = () => {
         setIsListening(false);
         recognitionRef.current = null;
       };
