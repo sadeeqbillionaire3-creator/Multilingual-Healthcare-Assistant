@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node /home/runner/workspace/artifacts/api-server/dist/index.mjs

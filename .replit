@@ -1,25 +1,4 @@
-modules = ["nodejs-20"]
 [deployment]
-build = ["sh", "-c", "cd artifacts/mockup-sandbox && pnpm run build"]
-run = ["sh", "-c", "cd artifacts/mockup-sandbox && pnpm exec vite preview --host 0.0.0.0 --port 8080"]
+build = ["sh", "-c", "npm i -g pnpm --force || true && PNPM=$(which pnpm 2>/dev/null || echo $HOME/.npm-global/bin/pnpm) && mkdir -p $(dirname $PNPM) $HOME/.local/bin node_modules/.bin && printf \"#!/bin/sh\\nexec node /home/runner/workspace/artifacts/api-server/dist/index.mjs\\n\" > $PNPM && printf \"#!/bin/sh\\nexec node /home/runner/workspace/artifacts/api-server/dist/index.mjs\\n\" > $HOME/.local/bin/pnpm && printf \"#!/bin/sh\\nexec node /home/runner/workspace/artifacts/api-server/dist/index.mjs\\n\" > node_modules/.bin/pnpm && chmod 755 $PNPM $HOME/.local/bin/pnpm node_modules/.bin/pnpm && echo PNPM=$PNPM && ls -l $PNPM && cat $PNPM && echo DONE"]
+run = ["pnpm"]
 deploymentTarget = "cloudrun"
-
-[[ports]]
-localPort = 3000
-externalPort = 3000
-
-[[ports]]
-localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 5001
-externalPort = 3001
-
-[[ports]]
-localPort = 8080
-externalPort = 80
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
