@@ -1,4 +1,33 @@
+modules = ["nodejs-20"]
+
+[nix]
+packages = ["pnpm"]
+
 [deployment]
-build = ["sh", "-c", "npm i -g pnpm --force || true && PNPM=$(which pnpm 2>/dev/null || echo $HOME/.npm-global/bin/pnpm) && mkdir -p $(dirname $PNPM) $HOME/.local/bin node_modules/.bin && printf \"#!/bin/sh\\nexec node /home/runner/workspace/artifacts/api-server/dist/index.mjs\\n\" > $PNPM && printf \"#!/bin/sh\\nexec node /home/runner/workspace/artifacts/api-server/dist/index.mjs\\n\" > $HOME/.local/bin/pnpm && printf \"#!/bin/sh\\nexec node /home/runner/workspace/artifacts/api-server/dist/index.mjs\\n\" > node_modules/.bin/pnpm && chmod 755 $PNPM $HOME/.local/bin/pnpm node_modules/.bin/pnpm && echo PNPM=$PNPM && ls -l $PNPM && cat $PNPM && echo DONE"]
-run = ["pnpm"]
+build = ["sh", "-c", "pnpm --filter @workspace/healthcare-assistant run build && pnpm --filter @workspace/api-server run build"]
+run = ["sh", "-c", "PORT=8080 NODE_ENV=production node --enable-source-maps artifacts/api-server/dist/index.mjs"]
 deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 5001
+externalPort = 3001
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 20372
+externalPort = 3002

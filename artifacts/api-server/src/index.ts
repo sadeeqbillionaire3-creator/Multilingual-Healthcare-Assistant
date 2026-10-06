@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger.js"
 
-const rawPort = process.env["PORT"];
+const rawPort = process.env["PORT"] || "8080";
 
 if (!rawPort) {
   throw new Error(
