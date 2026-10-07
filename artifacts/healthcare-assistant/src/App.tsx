@@ -570,7 +570,50 @@ function Home() {
     reader.readAsDataURL(file);
   };
 
-  const startListening = async () => {
+  const startListening = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setNotice('Voice input is not supported on this browser. Please try Chrome.');
+      return;
+    }
+    const locales: Record<string, string> = {
+      en: 'en-NG', ha: 'ha-NG', fr: 'fr-FR', ar: 'ar-SA', yo: 'yo-NG', ig: 'ig-NG', pcm: 'en-NG',
+    };
+    const begin = (locale: string, canRetry: boolean) => {
+      const recognition = new SR();
+      recognition.lang = locale;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = (event: any) => {
+        const text = event.results?.[0]?.[0]?.transcript?.trim();
+        if (text) setDraft((current: string) => (current ? current + ' ' + text : text));
+        setNotice('');
+      };
+      recognition.onerror = (event: any) => {
+        if (canRetry && event?.error === 'language-not-supported') {
+          setNotice('This language is not supported for voice here. Using English voice instead.');
+          begin('en-NG', false);
+          return;
+        }
+        setNotice(event?.error === 'not-allowed' ? 'Microphone permission denied. Please allow the microphone.' : 'Voice input stopped. Please try again.');
+        setIsListening(false);
+      };
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+        setIsListening(true);
+      } catch {
+        setNotice('Voice input could not start. Please check microphone permission.');
+        setIsListening(false);
+      }
+    };
+    begin(locales[language] || 'en-NG', true);
+  };/*
+  const startListening0ld = async () => {
     if (!voiceSupported) return;
     
 const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
@@ -619,7 +662,7 @@ const stopVoice = stopVoiceInput;
       setNotice('Voice input could not start. Please check microphone permission.');
       setIsListening(false);
     }
-  };
+  };*/
 
   const stopListening = () => {
     recognitionRef.current?.stop();
@@ -700,6 +743,25 @@ const stopVoice = stopVoiceInput;
   };
 
   const downloadReport = () => {
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const body = messages
+      .map((m) => {
+        const who = m.role === 'user' ? 'You' : 'MediLingua';
+        return '<div class="m ' + m.role + '"><div class="l">' + who + ' - ' + esc(formatDate(m.createdAt)) + '</div><div class="t" dir="auto">' + esc(m.text) + '</div></div>';
+      })
+      .join('');
+    const css = 'body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Arabic",sans-serif;margin:24px;color:#222;line-height:1.55}h1{color:#1d665f;margin:0 0 4px}.s{color:#555;font-size:13px;margin-bottom:18px}.m{margin-bottom:14px;page-break-inside:avoid}.l{font-size:12px;font-weight:600;color:#1d665f}.user .l{color:#1f3942}.t{white-space:pre-wrap;font-size:14px}.d{border-top:2px solid #2f8f82;margin-top:20px;padding-top:8px;font-size:12px;color:#666}';
+    const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MediLingua report</title><style>' + css + '</style></head><body><h1>MediLingua AI</h1><div class="s">Conversation report - ' + esc(new Date().toLocaleString()) + '</div>' + body + '<div class="d">Medical disclaimer: This report provides general information only, not a diagnosis or substitute for professional care.</div><scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}</scr' + 'ipt></body></html>';
+    const win = window.open('', '_blank');
+    if (!win) {
+      setNotice('Please allow pop-ups for this site, then tap Download report again.');
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+  const downloadReport0ld = () => {
     const doc = new jsPDF();
     const margin = 16;
     const width = 178;

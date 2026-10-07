@@ -24,23 +24,16 @@ app.use("/webhook", whatsappRouter);
 app.use("/api", routers);
 app.use("/api/analytics", analyticsRouters);
 
-// === FIX WHITE SCREEN - FINAL WORKING VERSION ===
-app.get('/', (req, res) => {
-  res.send(`
-    <html><body style="font-family:sans-serif; text-align:center; padding:50px">
-      <h1>MediLingua AI is Running ✅</h1>
-      <p>Backend is live!</p>
-      <p><a href="/api/health">Check /api/health</a></p>
-      <p>WhatsApp: /webhook</p>
-    </body></html>
-  `)
-});
-
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'MediLingua API', time: new Date().toISOString() })
 });
 
-// Try to serve frontend IF it exists (optional)
+// Unknown API paths return JSON instead of the website page
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+// Serve the website files if they exist (optional)
 const frontendDist = path.resolve(__dirname, "../../healthcare-assistant/dist/public");
 const frontendRoot = path.resolve(__dirname, "../../healthcare-assistant/dist");
 if (fs.existsSync(frontendDist)) {
@@ -50,6 +43,18 @@ if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendRoot));
   console.log("Serving frontend from:", frontendRoot);
 }
+
+// Simple status page, only used when the website files are not found
+app.get("/", (_req, res) => {
+  res.send(`
+    <html><body style="font-family:sans-serif; text-align:center; padding:50px">
+      <h1>MediLingua AI is Running ✅</h1>
+      <p>Backend is live!</p>
+      <p><a href="/api/health">Check /api/health</a></p>
+      <p>WhatsApp: /webhook</p>
+    </body></html>
+  `)
+});
 
 const errorHandler: ErrorRequestHandler = (error, _request, response, next) => {
   if (error && typeof error === "object" && "type" in error) {
