@@ -21,6 +21,7 @@ app.use(express.json({ limit: "6mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/webhook", whatsappRouter);
+app.use("/api/webhook", whatsappRouter);
 app.use("/api", routers);
 app.use("/api/analytics", analyticsRouters);
 
