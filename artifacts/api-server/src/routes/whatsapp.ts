@@ -54,6 +54,75 @@ const textOnlyReplies: Record<SupportedLanguage, string> = {
   pcm: "Abeg send your health question as a text message.",
 };
 
+const thankYouPhrases: Record<SupportedLanguage, string[]> = {
+  en: ["thank you", "thanks", "thank you so much", "thanks a lot", "many thanks", "i appreciate it"],
+  ha: ["nagode", "na gode", "na gode sosai", "mun gode"],
+  fr: ["merci", "merci beaucoup", "merci bien"],
+  ar: ["شكرا", "شكرًا", "شكراً", "شكرا جزيلا", "شكرًا جزيلًا"],
+  yo: ["e se", "ese", "o se", "mo dupe", "e se pupo"],
+  ig: ["daalu", "dalu", "imela", "ekele", "ekele diri"],
+  pcm: ["thank you", "thanks", "you try", "i appreciate am"],
+};
+
+const greetingPhrases: Record<SupportedLanguage, string[]> = {
+  en: ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"],
+  ha: ["sannu", "barka", "barka da safe", "barka da rana", "barka da yamma"],
+  fr: ["bonjour", "bonsoir", "salut", "coucou"],
+  ar: ["مرحبا", "السلام عليكم", "صباح الخير", "مساء الخير"],
+  yo: ["bawo", "ekuaro", "ekasan", "ekuole", "pele"],
+  ig: ["ndewo", "nnọọ", "ututu oma", "ehihie oma", "mgbede oma"],
+  pcm: ["how far", "how you dey", "good morning", "good afternoon", "good evening", "wetin dey"],
+};
+
+const thankYouReplies: Record<SupportedLanguage, string> = {
+  en: "You're welcome. I'm here if you have more health questions.",
+  ha: "Madalla! Ina nan idan kana da wata tambaya ta lafiya.",
+  fr: "Avec plaisir ! Je suis là si vous avez d'autres questions sur la santé.",
+  ar: "على الرحب والسعة! أنا هنا إذا كانت لديك أسئلة صحية أخرى.",
+  yo: "Ko tọ́! Mo wà níbí bí o bá ní àwọn ìbéèrè ìlera mìíràn.",
+  ig: "Nnọọ! Anọ m ebe a ma ọ bụrụ na ị nwere ajụjụ ahụike ọzọ.",
+  pcm: "You welcome! I dey here if you get more health questions.",
+};
+
+const greetingReplies: Record<SupportedLanguage, string> = {
+  en: "Hello! How can I help with your health today?",
+  ha: "Sannu! Ta yaya zan taimaka maka da lafiyarka yau?",
+  fr: "Bonjour ! Comment puis-je vous aider pour votre santé aujourd'hui ?",
+  ar: "مرحبًا! كيف يمكنني مساعدتك بشأن صحتك اليوم؟",
+  yo: "Ẹ káàbọ̀! Báwo ni mo ṣe lè ràn ọ́ lọ́wọ́ nípa ìlera rẹ lónìí?",
+  ig: "Ndewo! Kedu ka m ga-esi nyere gị aka gbasara ahụike gị taa?",
+  pcm: "Hello! How I fit help you with your health today?",
+};
+
+const friendlyFallbacks: Record<SupportedLanguage, string> = {
+  en: "I'm sorry, I couldn't prepare a reply just now. Please try again in a moment.",
+  ha: "Yi haƙuri, ban iya shirya amsa yanzu ba. Da fatan za a sake gwadawa nan ba da jimawa ba.",
+  fr: "Désolé, je n'ai pas pu préparer une réponse. Veuillez réessayer dans un instant.",
+  ar: "عذرًا، لم أتمكن من إعداد رد الآن. يُرجى المحاولة مرة أخرى بعد قليل.",
+  yo: "Ma binu, mi ò lè dá ìdáhùn sílẹ̀ báyìí. Jọwọ gbìyànjú lẹ́ẹ̀kansi láìpẹ́.",
+  ig: "Ndo, enweghị m ike ịkwadebe azịza ugbu a. Biko nwaa ọzọ n'oge na-adịghị anya.",
+  pcm: "Sorry, I no fit prepare reply now. Abeg try again shortly.",
+};
+
+const busyReplies: Record<SupportedLanguage, string> = {
+  en: "I'm very busy right now. Please try again later.",
+  ha: "Ina da yawan aiki sosai yanzu. Don Allah a sake gwadawa daga baya.",
+  fr: "L'assistant est très occupé en ce moment. Veuillez réessayer plus tard.",
+  ar: "المساعد مشغول جدًا الآن. يُرجى المحاولة مرة أخرى لاحقًا.",
+  yo: "Olùrànlọ́wọ́ ti dí púpọ̀ báyìí. Jọwọ tún gbìyànjú lẹ́yìn náà.",
+  ig: "Onye enyemaka ji ọrụ nke ukwuu ugbu a. Biko nwaa ọzọ ma emechaa.",
+  pcm: "Assistant dey very busy right now. Abeg try again later.",
+};
+
+const languageIndicators: Partial<Record<SupportedLanguage, string[]>> = {
+  ha: ["nagode", "na gode", "sannu", "ciwon", "barka da"],
+  fr: ["bonjour", "merci", "je suis", "j'ai", "douleur", "fièvre"],
+  ar: ["شكرا", "شكرًا", "مرحبا", "السلام عليكم", "عندي", "ألم"],
+  yo: ["e se", "ẹ ṣe", "bawo", "jowo", "jọ̀wọ́", "irora"],
+  ig: ["daalu", "dalu", "ndewo", "biko", "mgbu", "ahụ"],
+  pcm: ["abeg", "wetin", "i dey", "you dey", "no fit"],
+};
+
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY;
   return apiKey ? new GoogleGenAI({ apiKey }) : null;
@@ -63,10 +132,72 @@ function getModel() {
   return process.env.GEMINI_MODEL || "gemini-3-flash-preview";
 }
 
+function normalizeMessageForMatch(text: string) {
+  return text
+    .toLocaleLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getShortConversationReply(
+  text: string,
+): { language: SupportedLanguage; reply: string } | undefined {
+  const normalized = normalizeMessageForMatch(text);
+
+  for (const language of supportedLanguages) {
+    if (
+      thankYouPhrases[language].some(
+        (phrase) => normalizeMessageForMatch(phrase) === normalized,
+      )
+    ) {
+      return { language, reply: thankYouReplies[language] };
+    }
+  }
+
+  for (const language of supportedLanguages) {
+    if (
+      greetingPhrases[language].some(
+        (phrase) => normalizeMessageForMatch(phrase) === normalized,
+      )
+    ) {
+      return { language, reply: greetingReplies[language] };
+    }
+  }
+}
+
+function guessLanguageFromText(text: string): SupportedLanguage {
+  const normalized = normalizeMessageForMatch(text);
+
+  for (const language of supportedLanguages) {
+    const phrases = [
+      ...thankYouPhrases[language],
+      ...greetingPhrases[language],
+      ...(languageIndicators[language] ?? []),
+    ];
+    if (
+      phrases.some((phrase) =>
+        normalized.includes(normalizeMessageForMatch(phrase)),
+      )
+    ) {
+      return language;
+    }
+  }
+
+  return "en";
+}
+
 async function generateContentWithRetry(client: GoogleGenAI, contents: string) {
   try {
     return await client.models.generateContent({ model: getModel(), contents });
-  } catch {
+  } catch (error) {
+    logger.error(
+      { error: safeErrorMessage(error) },
+      "Gemini request failed; retrying",
+    );
+    if (isRateLimitError(error)) throw error;
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return client.models.generateContent({ model: getModel(), contents });
   }
@@ -130,11 +261,11 @@ function makeSafeReply(
   return `${prefix}${answer}${suffix}`;
 }
 
-async function createHealthReply(text: string) {
-  const client = getGeminiClient();
-  if (!client) throw new Error("Gemini API is not configured.");
-
-  const language = await detectLanguage(client, text);
+async function createHealthReply(
+  client: GoogleGenAI,
+  text: string,
+  language: SupportedLanguage,
+) {
   const emergency = isEmergency(text);
   const emergencyNotice = emergency ? emergencyMessages[language] : "";
   const disclaimer = disclaimers[language];
@@ -207,6 +338,33 @@ function safeErrorMessage(error: unknown) {
   return message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
 }
 
+function isRateLimitError(error: unknown) {
+  const value = error as {
+    status?: unknown;
+    statusCode?: unknown;
+    code?: unknown;
+    message?: unknown;
+    response?: { status?: unknown; data?: { error?: { status?: unknown; message?: unknown } } };
+  } | null;
+  const status = Number(value?.status ?? value?.statusCode ?? value?.response?.status);
+  const details = [
+    value?.status,
+    value?.code,
+    value?.message,
+    value?.response?.data?.error?.status,
+    value?.response?.data?.error?.message,
+  ].filter((part) => part !== undefined && part !== null).join(" ").toUpperCase();
+
+  return (
+    status === 429 ||
+    /\b429\b/.test(details) ||
+    details.includes("RESOURCE_EXHAUSTED") ||
+    details.includes("QUOTA") ||
+    details.includes("RATE LIMIT") ||
+    details.includes("TOO MANY REQUESTS")
+  );
+}
+
 async function sendWhatsAppMessage(to: string, reply: string) {
   const phoneNumberId = process.env.PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_TOKEN;
@@ -247,9 +405,35 @@ async function processWhatsAppWebhook(body: any) {
 
     let reply: string;
     if (message.type === "text") {
-      const text = message.text?.body;
-      if (typeof text !== "string" || !text.trim()) return;
-      reply = await createHealthReply(text.trim());
+      const text = typeof message.text?.body === "string"
+        ? message.text.body.trim()
+        : "";
+
+      if (!text) {
+        const language = getKnownLanguage(message, value) ?? "en";
+        reply = friendlyFallbacks[language];
+      } else {
+        const shortReply = getShortConversationReply(text);
+        if (shortReply) {
+          reply = shortReply.reply;
+        } else {
+          let language = guessLanguageFromText(text);
+          try {
+            const client = getGeminiClient();
+            if (!client) throw new Error("Gemini API is not configured.");
+            language = await detectLanguage(client, text);
+            reply = await createHealthReply(client, text, language);
+          } catch (error) {
+            logger.error(
+              { error: safeErrorMessage(error) },
+              "WhatsApp AI reply failed",
+            );
+            reply = isRateLimitError(error)
+              ? busyReplies[language]
+              : friendlyFallbacks[language];
+          }
+        }
+      }
     } else {
       let language = getKnownLanguage(message, value);
       const caption = getCaption(message);
