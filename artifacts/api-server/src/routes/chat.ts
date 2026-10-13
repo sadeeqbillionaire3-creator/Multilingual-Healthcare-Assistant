@@ -7,6 +7,10 @@ import {
   SendChatMessageResponse,
 } from "@workspace/api-zod";
 import { logger } from "../lib/logger.js"
+import {
+  generateWithGeminiRecovery,
+  getGeminiFailureMetadata,
+} from "../lib/gemini-recovery.js";
 
 const router: IRouter = Router();
 
@@ -37,6 +41,41 @@ const disclaimers = {
   ig: "Nkwuputa: Nke a abụghị nchọpụta ahụike. Biko gakwuru dọkịta ruru eru.",
   pcm: "Disclaimer: Dis no be doctor diagnosis. Abeg go meet better doctor.",
 } as const;
+
+const fallbackReplies: Record<(typeof SUPPORTED_LANGUAGES)[number], string> = {
+  en: "I couldn't prepare a response right now. Please try again shortly.",
+  ha: "Ba zan iya shirya amsa a yanzu ba. Da fatan za a sake gwadawa nan ba da jimawa ba.",
+  fr: "Je ne peux pas préparer de réponse pour le moment. Veuillez réessayer dans quelques instants.",
+  ar: "تعذّر عليّ إعداد رد الآن. يُرجى المحاولة مرة أخرى بعد قليل.",
+  yo: "Mi ò lè pèsè ìdáhùn báyìí. Jọ̀wọ́ tún gbìyànjú lẹ́yìn díẹ̀.",
+  ig: "Enweghị m ike ịkwadebe azịza ugbu a. Biko nwaa ọzọ n'oge na-adịghị anya.",
+  pcm: "I no fit prepare answer right now. Abeg try again shortly.",
+};
+
+const busyReplies: Record<(typeof SUPPORTED_LANGUAGES)[number], string> = {
+  en: "The assistant is very busy right now. Please try again later.",
+  ha: "Mataimaki yana da aiki sosai a yanzu. Don Allah a sake gwadawa daga baya.",
+  fr: "L’assistant est très occupé pour le moment. Veuillez réessayer plus tard.",
+  ar: "المساعد مشغول جدًا الآن. يُرجى المحاولة مرة أخرى لاحقًا.",
+  yo: "Olùrànlọ́wọ́ ti dí púpọ̀ báyìí. Jọ̀wọ́ tún gbìyànjú lẹ́yìn náà.",
+  ig: "Onye enyemaka ji ọrụ nke ukwuu ugbu a. Biko nwaa ọzọ ma emechaa.",
+  pcm: "Assistant dey very busy right now. Abeg try again later.",
+};
+
+function createFailureReply(
+  language: (typeof SUPPORTED_LANGUAGES)[number],
+  isEmergency: boolean,
+  isQuotaFailure: boolean,
+) {
+  if (isEmergency) {
+    return `${emergencyMessages[language]}\n\n${disclaimers[language]}`;
+  }
+
+  const message = isQuotaFailure
+    ? busyReplies[language]
+    : fallbackReplies[language];
+  return `${message}\n\n${disclaimers[language]}`;
+}
 
 const emergencyKeywords = [
   // English
@@ -125,11 +164,6 @@ router.post("/chat", async (request, response) => {
     return;
   }
   const { message, lang, image } = parsed.data;
-  const client = getClient();
-  if (!client) {
-    response.status(503).json({ error: "Service temporarily unavailable. Server is not configured." });
-    return;
-  }
   let imagePart: { inlineData: { data: string; mimeType: string } } | undefined;
   if (image) {
     try {
@@ -142,6 +176,16 @@ router.post("/chat", async (request, response) => {
   }
   const isEmergency = checkEmergency(message);
   logChat({ lang, isEmergency, message: message.slice(0, 80) });
+  const client = getClient();
+  if (!client) {
+    logger.error({ failureKind: "configuration" }, "Gemini is not configured; serving localized fallback");
+    const output = SendChatMessageResponse.parse({
+      reply: createFailureReply(lang, isEmergency, false),
+      is_emergency: isEmergency,
+    });
+    response.json(output);
+    return;
+  }
   const emergencyNotice = emergencyMessages[lang] || emergencyMessages["en"];
   const disclaimer = disclaimers[lang] || disclaimers["en"];
   const emergencyInstruction = emergencyNotice && isEmergency? `Start the response with this exact emergency notice: ${emergencyNotice}` : "";
@@ -158,45 +202,51 @@ ${message}`;
 
   try {
     const contents = imagePart? [{ text: prompt }, imagePart] : [{ text: prompt }];
-    let result;
-    try {
-      result = await client.models.generateContent({
+    const result = await generateWithGeminiRecovery(
+      (signal) => client.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
         contents,
-      });
-    } catch (e) {
-      console.error("Gemini-3-flash-preview error:", e.message);
-      await new Promise(r => setTimeout(r, 2000));
-      try {
-        const retryResult = await client.models.generateContent({
-          model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
-          contents,
-        });
-        result = retryResult;
-      } catch (retryError) {
-        console.error("Retry failed:", retryError.message);
-        response.status(503).json({ error: "AI is busy right now, please try again." });
-        return;
-      }
-    }
+        config: { abortSignal: signal },
+      }),
+      {
+        onRetry: ({ kind, attempt, delayMs }) => {
+          logger.warn(
+            { failureKind: kind, attempt, delayMs },
+            "Retrying Gemini generation after a temporary failure",
+          );
+        },
+      },
+    );
 
     let reply = result.text?.trim()?? "";
     if (!reply) {
-      response.status(502).json({ error: "The assistant returned no response." });
-      return;
-    }
-    if (isEmergency && emergencyNotice &&!reply.startsWith(emergencyNotice)) {
-      reply = `${emergencyNotice}\n\n${reply}`;
-    }
-    if (!reply.includes(disclaimer)) {
-      reply = `${reply}\n\n${disclaimer}`;
+      logger.warn({ failureKind: "empty_response" }, "Gemini returned no chat text; serving localized fallback");
+      reply = createFailureReply(lang, isEmergency, false);
+    } else {
+      if (isEmergency && emergencyNotice &&!reply.startsWith(emergencyNotice)) {
+        reply = `${emergencyNotice}\n\n${reply}`;
+      }
+      if (!reply.includes(disclaimer)) {
+        reply = `${reply}\n\n${disclaimer}`;
+      }
     }
     logChat({ lang: lang, isEmergency: isEmergency, message: message });
     const output = SendChatMessageResponse.parse({ reply, is_emergency: isEmergency });
     response.json(output);
   } catch (error) {
-    logger.error({ err: error }, "Gemini request failed");
-    response.status(502).json({ error: "Sorry, something went wrong. Please try again later." });
+    const failure = getGeminiFailureMetadata(error);
+    logger.error(
+      {
+        failureKind: failure.kind,
+        ...(failure.status ? { httpStatus: failure.status } : {}),
+      },
+      "Gemini generation failed; serving localized fallback",
+    );
+    const output = SendChatMessageResponse.parse({
+      reply: createFailureReply(lang, isEmergency, failure.kind === "quota"),
+      is_emergency: isEmergency,
+    });
+    response.json(output);
   }
 });
 

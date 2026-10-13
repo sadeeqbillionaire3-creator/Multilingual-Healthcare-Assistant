@@ -1,11 +1,22 @@
 import { Router } from "express";
 import { GoogleGenAI } from "@google/genai";
 import { logger } from "../lib/logger.js";
+import {
+  generateWithGeminiRecovery,
+  getGeminiFailureMetadata,
+} from "../lib/gemini-recovery.js";
+import {
+  submitWhatsAppText,
+  WhatsAppGraphApiError,
+} from "../lib/whatsapp-cloud.js";
 
 const router = Router();
 
 const supportedLanguages = ["en", "ha", "fr", "ar", "yo", "ig", "pcm"] as const;
 type SupportedLanguage = (typeof supportedLanguages)[number];
+const MAX_TRACKED_MESSAGE_IDS = 10_000;
+const MESSAGE_ID_TTL_MS = 24 * 60 * 60 * 1000;
+const recentlySeenMessageIds = new Map<string, number>();
 
 const emergencyMessages: Record<SupportedLanguage, string> = {
   en: "This sounds like an emergency. Please seek immediate medical care, go to the nearest hospital, or call emergency services now.",
@@ -196,30 +207,26 @@ function guessLanguageFromText(text: string): SupportedLanguage {
   return "en";
 }
 
-async function generateContentWithRetry(client: GoogleGenAI, contents: string) {
-  try {
-    return await client.models.generateContent({ model: getModel(), contents });
-  } catch (error) {
-    logger.error(
-      { error: safeErrorMessage(error) },
-      "Gemini request failed; retrying",
-    );
-    if (isRateLimitError(error)) throw error;
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    return client.models.generateContent({ model: getModel(), contents });
-  }
-}
-
-async function detectLanguage(client: GoogleGenAI, text: string): Promise<SupportedLanguage> {
-  const result = await generateContentWithRetry(
-    client,
-    `Identify the primary language of this message. Choose exactly one code from: en (English), ha (Hausa), fr (French), ar (Arabic), yo (Yoruba), ig (Igbo), pcm (Nigerian Pidgin). For code-switching, choose the dominant language. If unclear, choose en. Output only the code.\n\nMessage:\n${text}`,
+function parseModelReply(
+  generatedText: string,
+  fallbackLanguage: SupportedLanguage,
+): { language: SupportedLanguage; reply: string } {
+  const text = generatedText
+    .trim()
+    .replace(/^```(?:text)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+  const match = text.match(
+    /^\s*LANGUAGE\s*[:=]\s*(en|ha|fr|ar|yo|ig|pcm)\s*(?:\r?\n)\s*([\s\S]+)$/i,
   );
-  const match = result.text?.trim().toLowerCase().match(/\b(en|ha|fr|ar|yo|ig|pcm)\b/);
-  const language = match?.[1];
-  return supportedLanguages.includes(language as SupportedLanguage)
-    ? (language as SupportedLanguage)
-    : "en";
+
+  if (!match) return { language: fallbackLanguage, reply: text };
+
+  const reply = match[2].trim().replace(/^REPLY\s*[:=]\s*/i, "").trim();
+  return {
+    language: match[1].toLowerCase() as SupportedLanguage,
+    reply,
+  };
 }
 
 function isEmergency(text: string) {
@@ -279,30 +286,46 @@ function makeSafeReply(
 async function createHealthReply(
   client: GoogleGenAI,
   text: string,
-  language: SupportedLanguage,
-) {
+  fallbackLanguage: SupportedLanguage,
+): Promise<{ language: SupportedLanguage; reply: string }> {
   const emergency = isEmergency(text);
-  const emergencyNotice = emergency ? emergencyMessages[language] : "";
-  const disclaimer = disclaimers[language];
-  const emergencyInstruction = emergency
-    ? `Start the response with this exact emergency notice: ${emergencyNotice}`
-    : "";
-  const prompt = `You are HealthCare Assistant.
-Reply in the same language as the user's message. The detected language is ${language}. Supported languages are English, Hausa, French, Arabic, Yoruba, Igbo, and Nigerian Pidgin.
+  const prompt = `You are MediLingua Health AI.
+Identify the user's language and reply in that same language. Supported languages are English (en), Hausa (ha), French (fr), Arabic (ar), Yoruba (yo), Igbo (ig), and Nigerian Pidgin (pcm). If the language is unclear, use this hint: ${fallbackLanguage}.
 Provide general health information, basic self-care guidance, and when to seek professional care.
 Never diagnose, prescribe medication, or claim certainty.
-${emergencyInstruction}
-End every reply with this exact disclaimer: ${disclaimer}
-Use plain text only, with no markdown. Keep the entire reply under 700 characters and finish on a complete sentence.
+${emergency ? "This may be an emergency. Clearly advise the user to seek immediate medical help now; the application will add its verified emergency notice." : ""}
+Do not add a medical disclaimer; the application will append the correct localized disclaimer.
+Use plain text only, with no markdown. Keep the reply under 500 characters and finish on a complete sentence.
 Use correct standard spelling and diacritics in the reply: French accents; Hausa letters ɓ, ɗ, ƙ, and ƴ where appropriate; Igbo dot marks such as ị, ọ, and ụ; and full Yoruba tone marks and underdots. For example, write “máa lọ,” never “ma lo.”
+Return exactly two parts: first line “LANGUAGE: <code>” using one supported code, then the reply text on the next line. Do not include labels in the reply.
 
 User message:
 ${text}`;
 
-  const result = await generateContentWithRetry(client, prompt);
+  const result = await generateWithGeminiRecovery(
+    (signal) => client.models.generateContent({
+      model: getModel(),
+      contents: prompt,
+      config: { abortSignal: signal },
+    }),
+    {
+      onRetry: ({ kind, attempt, delayMs }) => {
+        logger.warn(
+          { failureKind: kind, attempt, delayMs },
+          "Retrying WhatsApp Gemini generation after a temporary failure",
+        );
+      },
+    },
+  );
   const generatedReply = result.text?.trim();
   if (!generatedReply) throw new Error("Gemini returned an empty reply.");
-  return makeSafeReply(generatedReply, language, emergency);
+
+  const parsed = parseModelReply(generatedReply, fallbackLanguage);
+  if (!parsed.reply) throw new Error("Gemini returned an empty reply.");
+  return {
+    language: parsed.language,
+    reply: makeSafeReply(parsed.reply, parsed.language, emergency),
+  };
 }
 
 function parseKnownLanguage(value: unknown): SupportedLanguage | undefined {
@@ -346,68 +369,71 @@ function getCaption(message: any): string | undefined {
   return typeof caption === "string" && caption.trim() ? caption.trim() : undefined;
 }
 
-function safeErrorMessage(error: unknown) {
-  let message = error instanceof Error ? error.message : String(error);
-  for (const secret of [process.env.WHATSAPP_TOKEN, process.env.GEMINI_API_KEY]) {
-    if (secret) message = message.split(secret).join("[redacted]");
-  }
-  return message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
-}
-
-function isRateLimitError(error: unknown) {
-  const value = error as {
-    status?: unknown;
-    statusCode?: unknown;
-    code?: unknown;
-    message?: unknown;
-    response?: { status?: unknown; data?: { error?: { status?: unknown; message?: unknown } } };
-  } | null;
-  const status = Number(value?.status ?? value?.statusCode ?? value?.response?.status);
-  const details = [
-    value?.status,
-    value?.code,
-    value?.message,
-    value?.response?.data?.error?.status,
-    value?.response?.data?.error?.message,
-  ].filter((part) => part !== undefined && part !== null).join(" ").toUpperCase();
-
-  return (
-    status === 429 ||
-    /\b429\b/.test(details) ||
-    details.includes("RESOURCE_EXHAUSTED") ||
-    details.includes("QUOTA") ||
-    details.includes("RATE LIMIT") ||
-    details.includes("TOO MANY REQUESTS")
-  );
-}
-
 async function sendWhatsAppMessage(to: string, reply: string) {
   const phoneNumberId = process.env.PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_TOKEN;
   if (!phoneNumberId || !accessToken) {
-    throw new Error("WhatsApp Cloud API is not configured.");
+    throw new WhatsAppGraphApiError("configuration");
   }
 
-  const response = await fetch(
-    `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+  const result = await submitWhatsAppText({
+    phoneNumberId,
+    accessToken,
+    to,
+    reply,
+  });
+  logger.info(
     {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: reply },
-      }),
+      httpStatus: result.status,
+      acceptedByGraph: result.accepted,
+      providerMessageIdPresent: result.providerMessageIdPresent,
     },
+    "WhatsApp Graph API accepted an outbound text message",
   );
+}
 
-  if (!response.ok) {
-    throw new Error(`WhatsApp Cloud API returned HTTP ${response.status}.`);
+function createFailureReply(
+  language: SupportedLanguage,
+  emergency: boolean,
+  quotaFailure: boolean,
+) {
+  if (emergency) {
+    return `${emergencyMessages[language]}\n\n${disclaimers[language]}`;
   }
+
+  const message = quotaFailure
+    ? busyReplies[language]
+    : friendlyFallbacks[language];
+  return `${message}\n\n${disclaimers[language]}`;
+}
+
+function isDuplicateMessage(messageId: string) {
+  if (!messageId) return false;
+
+  const now = Date.now();
+  for (const [knownId, expiresAt] of recentlySeenMessageIds) {
+    if (expiresAt <= now) recentlySeenMessageIds.delete(knownId);
+  }
+
+  if (recentlySeenMessageIds.has(messageId)) return true;
+  if (recentlySeenMessageIds.size >= MAX_TRACKED_MESSAGE_IDS) {
+    const oldestId = recentlySeenMessageIds.keys().next().value;
+    if (oldestId) recentlySeenMessageIds.delete(oldestId);
+  }
+  recentlySeenMessageIds.set(messageId, now + MESSAGE_ID_TTL_MS);
+  return false;
+}
+
+function safeErrorMessage(error: unknown) {
+  let message = error instanceof Error ? error.message : String(error);
+  for (const secret of [
+    process.env.WHATSAPP_TOKEN,
+    process.env.WHATSAPP_VERIFY_TOKEN,
+    process.env.GEMINI_API_KEY,
+  ]) {
+    if (secret) message = message.split(secret).join("[redacted]");
+  }
+  return message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
 }
 
 async function processWhatsAppWebhook(body: any) {
@@ -418,6 +444,12 @@ async function processWhatsAppWebhook(body: any) {
 
     const sender = typeof message.from === "string" ? message.from : "";
     if (!sender) return;
+
+    const messageId = typeof message.id === "string" ? message.id.trim() : "";
+    if (isDuplicateMessage(messageId)) {
+      logger.info({ duplicate: true }, "Skipping duplicate WhatsApp webhook message");
+      return;
+    }
 
     let reply: string;
     if (message.type === "text") {
@@ -433,44 +465,51 @@ async function processWhatsAppWebhook(body: any) {
         if (shortReply) {
           reply = shortReply.reply;
         } else {
-          let language = guessLanguageFromText(text);
+          let language =
+            getKnownLanguage(message, value) ?? guessLanguageFromText(text);
+          const emergency = isEmergency(text);
           try {
             const client = getGeminiClient();
             if (!client) throw new Error("Gemini API is not configured.");
-            language = await detectLanguage(client, text);
-            reply = await createHealthReply(client, text, language);
+            const generated = await createHealthReply(client, text, language);
+            language = generated.language;
+            reply = generated.reply;
           } catch (error) {
+            const failure = getGeminiFailureMetadata(error);
             logger.error(
-              { error: safeErrorMessage(error) },
-              "WhatsApp AI reply failed",
+              {
+                failureKind: failure.kind,
+                ...(failure.status ? { httpStatus: failure.status } : {}),
+              },
+              "WhatsApp Gemini generation failed; using localized fallback",
             );
-            reply = isRateLimitError(error)
-              ? busyReplies[language]
-              : friendlyFallbacks[language];
+            reply = createFailureReply(
+              language,
+              emergency,
+              failure.kind === "quota",
+            );
           }
         }
       }
     } else {
       let language = getKnownLanguage(message, value);
       const caption = getCaption(message);
-      if (!language && caption) {
-        try {
-          const client = getGeminiClient();
-          if (client) language = await detectLanguage(client, caption);
-        } catch (error) {
-          logger.error(
-            { error: safeErrorMessage(error) },
-            "WhatsApp caption language detection failed",
-          );
-        }
-      }
+      if (!language && caption) language = guessLanguageFromText(caption);
       reply = textOnlyReplies[language ?? "en"];
     }
 
     await sendWhatsAppMessage(sender, reply);
   } catch (error) {
+    const graphFailure = error instanceof WhatsAppGraphApiError;
     logger.error(
-      { error: safeErrorMessage(error) },
+      graphFailure
+        ? {
+            failureKind: error.kind,
+            ...(error.status ? { httpStatus: error.status } : {}),
+          }
+        : {
+            errorType: error instanceof Error ? error.name : "UnknownError",
+          },
       "WhatsApp webhook message processing failed",
     );
   }

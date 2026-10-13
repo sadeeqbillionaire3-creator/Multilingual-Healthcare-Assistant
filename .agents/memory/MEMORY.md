@@ -1,0 +1,1 @@
+- [MediLingua deployment constraints](medilingua-deployment.md) — preserve the live app and its previously working WhatsApp integration; make targeted backend changes.
