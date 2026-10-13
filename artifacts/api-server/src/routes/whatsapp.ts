@@ -9,21 +9,21 @@ type SupportedLanguage = (typeof supportedLanguages)[number];
 
 const emergencyMessages: Record<SupportedLanguage, string> = {
   en: "This sounds like an emergency. Please seek immediate medical care, go to the nearest hospital, or call emergency services now.",
-  ha: "Wannan yana kama da gaggawa. Don Allah je asibiti mafi kusa nan da nan ko kira agajin gaggawa yanzu.",
+  ha: "Wannan yana kama da gaggawa. Don Allah, je asibiti mafi kusa yanzu ko kira lambar agajin gaggawa.",
   fr: "Cela semble être une urgence. Allez à l'hôpital le plus proche ou appelez les urgences.",
   ar: "يبدو أن هذه حالة طارئة. اذهب إلى أقرب مستشفى أو اتصل بخدمات الطوارئ.",
-  yo: "Eyi dabi pe pajawiri. Jọwọ lọ si ile-iwosan ti o sunmọ julọ tabi pe iranlọwọ pajawiri nisisiyi.",
-  ig: "Nke a dị ka ihe mberede. Biko gaa ụlọ ọgwụ kacha nso ugbu a ma ọ bụ kpọọ ọrụ mberede.",
+  yo: "Èyí dàbí pajawiri. Jọ̀wọ́ lọ sí ilé-ìwòsàn tó súnmọ́ jù lọ tàbí pe ìrànlọ́wọ́ pajawiri báyìí.",
+  ig: "Nke a yiri ihe mberede. Biko gaa n'ụlọ ọgwụ kacha nso ugbu a ma ọ bụ kpọọ ndị ọrụ enyemaka mberede.",
   pcm: "Dis one be like emergency. Abeg go nearest hospital now now or call emergency number.",
 };
 
 const disclaimers: Record<SupportedLanguage, string> = {
   en: "Disclaimer: This is not a medical diagnosis. Please consult a qualified doctor.",
-  ha: "Gargadi: Wannan ba ganewar asibiti ba ne. Da fatan za a tuntubi likita mai lasisi.",
+  ha: "Gargaɗi: Wannan ba ganewar asibiti ba ne. Da fatan za a tuntuɓi ƙwararren likita.",
   fr: "Avertissement: Ceci n'est pas un diagnostic médical. Veuillez consulter un médecin qualifié.",
   ar: "إخلاء مسؤولية: هذا ليس تشخيصًا طبيًا. يرجى استشارة طبيب مؤهل.",
-  yo: "Afiwera: Eyi kii ṣe ayẹwo iwosan. Jọwọ kan si dokita to peye.",
-  ig: "Nkwuputa: Nke a abụghị nchọpụta ahụike. Biko gakwuru dọkịta ruru eru.",
+  yo: "Àkíyèsí: Èyí kì í ṣe àyẹ̀wò ìṣègùn. Jọ̀wọ́ bá dókítà tó tóótun sọ̀rọ̀.",
+  ig: "Nkwupụta: Nke a abụghị nchọpụta ahụike. Biko gakwuru dọkịta ruru eru.",
   pcm: "Disclaimer: Dis no be doctor diagnosis. Abeg go meet better doctor.",
 };
 
@@ -46,10 +46,10 @@ const emergencyKeywords = [
 
 const textOnlyReplies: Record<SupportedLanguage, string> = {
   en: "Please send your health question as a text message.",
-  ha: "Da fatan za a aika da tambayar lafiyarka a matsayin saƙon rubutu.",
+  ha: "Da fatan za a aika tambayar lafiyarka a matsayin saƙon rubutu.",
   fr: "Veuillez envoyer votre question de santé sous forme de message texte.",
   ar: "يرجى إرسال سؤالك الصحي كرسالة نصية.",
-  yo: "Jọwọ fi ibeere ilera rẹ ranṣẹ gẹgẹbi ifiranṣẹ ọrọ.",
+  yo: "Jọ̀wọ́ fi ìbéèrè ìlera rẹ ránṣẹ́ gẹ́gẹ́ bí ìfiránṣẹ́ ọ̀rọ̀.",
   ig: "Biko zipu ajụjụ ahụike gị dịka ozi ederede.",
   pcm: "Abeg send your health question as a text message.",
 };
@@ -79,8 +79,8 @@ const thankYouReplies: Record<SupportedLanguage, string> = {
   ha: "Madalla! Ina nan idan kana da wata tambaya ta lafiya.",
   fr: "Avec plaisir ! Je suis là si vous avez d'autres questions sur la santé.",
   ar: "على الرحب والسعة! أنا هنا إذا كانت لديك أسئلة صحية أخرى.",
-  yo: "Ko tọ́! Mo wà níbí bí o bá ní àwọn ìbéèrè ìlera mìíràn.",
-  ig: "Nnọọ! Anọ m ebe a ma ọ bụrụ na ị nwere ajụjụ ahụike ọzọ.",
+  yo: "Kò tọ́pẹ́! Mo wà níbí bí o bá tún ní ìbéèrè nípa ìlera.",
+  ig: "Nnọọ! Anọ m ebe a ma ọ bụrụ na ị nwere ajụjụ gbasara ahụike ọzọ.",
   pcm: "You welcome! I dey here if you get more health questions.",
 };
 
@@ -89,7 +89,7 @@ const greetingReplies: Record<SupportedLanguage, string> = {
   ha: "Sannu! Ta yaya zan taimaka maka da lafiyarka yau?",
   fr: "Bonjour ! Comment puis-je vous aider pour votre santé aujourd'hui ?",
   ar: "مرحبًا! كيف يمكنني مساعدتك بشأن صحتك اليوم؟",
-  yo: "Ẹ káàbọ̀! Báwo ni mo ṣe lè ràn ọ́ lọ́wọ́ nípa ìlera rẹ lónìí?",
+  yo: "Ẹ kú àbọ̀! Báwo ni mo ṣe lè ràn ọ́ lọ́wọ́ nípa ìlera rẹ lónìí?",
   ig: "Ndewo! Kedu ka m ga-esi nyere gị aka gbasara ahụike gị taa?",
   pcm: "Hello! How I fit help you with your health today?",
 };
@@ -99,28 +99,28 @@ const friendlyFallbacks: Record<SupportedLanguage, string> = {
   ha: "Yi haƙuri, ban iya shirya amsa yanzu ba. Da fatan za a sake gwadawa nan ba da jimawa ba.",
   fr: "Désolé, je n'ai pas pu préparer une réponse. Veuillez réessayer dans un instant.",
   ar: "عذرًا، لم أتمكن من إعداد رد الآن. يُرجى المحاولة مرة أخرى بعد قليل.",
-  yo: "Ma binu, mi ò lè dá ìdáhùn sílẹ̀ báyìí. Jọwọ gbìyànjú lẹ́ẹ̀kansi láìpẹ́.",
+  yo: "Má bínú, mi ò lè pèsè ìdáhùn báyìí. Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kansi láìpẹ́.",
   ig: "Ndo, enweghị m ike ịkwadebe azịza ugbu a. Biko nwaa ọzọ n'oge na-adịghị anya.",
   pcm: "Sorry, I no fit prepare reply now. Abeg try again shortly.",
 };
 
 const busyReplies: Record<SupportedLanguage, string> = {
   en: "I'm very busy right now. Please try again later.",
-  ha: "Ina da yawan aiki sosai yanzu. Don Allah a sake gwadawa daga baya.",
+  ha: "Ina da aiki sosai yanzu. Don Allah a sake gwadawa daga baya.",
   fr: "L'assistant est très occupé en ce moment. Veuillez réessayer plus tard.",
   ar: "المساعد مشغول جدًا الآن. يُرجى المحاولة مرة أخرى لاحقًا.",
-  yo: "Olùrànlọ́wọ́ ti dí púpọ̀ báyìí. Jọwọ tún gbìyànjú lẹ́yìn náà.",
-  ig: "Onye enyemaka ji ọrụ nke ukwuu ugbu a. Biko nwaa ọzọ ma emechaa.",
+  yo: "Olùrànlọ́wọ́ ti dí púpọ̀ báyìí. Jọ̀wọ́ tún gbìyànjú lẹ́yìn náà.",
+  ig: "Onye enyemaka ji ọrụ dị ukwuu ugbu a. Biko nwaa ọzọ ma emechaa.",
   pcm: "Assistant dey very busy right now. Abeg try again later.",
 };
 
 const languageIndicators: Partial<Record<SupportedLanguage, string[]>> = {
-  ha: ["nagode", "na gode", "sannu", "ciwon", "barka da"],
-  fr: ["bonjour", "merci", "je suis", "j'ai", "douleur", "fièvre"],
+  ha: ["nagode", "na gode", "sannu", "ciwon", "barka da", "don Allah", "ina jin", "ba zan iya"],
+  fr: ["bonjour", "merci", "je suis", "j'ai", "douleur", "fièvre", "s'il vous plaît"],
   ar: ["شكرا", "شكرًا", "مرحبا", "السلام عليكم", "عندي", "ألم"],
-  yo: ["e se", "ẹ ṣe", "bawo", "jowo", "jọ̀wọ́", "irora"],
-  ig: ["daalu", "dalu", "ndewo", "biko", "mgbu", "ahụ"],
-  pcm: ["abeg", "wetin", "i dey", "you dey", "no fit"],
+  yo: ["e se", "ẹ ṣe", "bawo", "jowo", "jọ̀wọ́", "irora", "mo ni", "ara mi", "mo fẹ"],
+  ig: ["daalu", "dalu", "ndewo", "biko", "mgbu", "ahụ", "anyị", "ana m", "enweghị"],
+  pcm: ["abeg", "wetin", "i dey", "you dey", "no fit", "how far"],
 };
 
 function getGeminiClient() {
@@ -166,10 +166,17 @@ function getShortConversationReply(
       return { language, reply: greetingReplies[language] };
     }
   }
+
+  return undefined;
 }
 
 function guessLanguageFromText(text: string): SupportedLanguage {
   const normalized = normalizeMessageForMatch(text);
+  if (/[\u0600-\u06ff]/u.test(text)) return "ar";
+  if (/[ɓɗƙƴ]/iu.test(text)) return "ha";
+  if (/[ịụṅ]/iu.test(text)) return "ig";
+  if (/[ẹṣ]/iu.test(text)) return "yo";
+  if (/[éèêàâçùôœ]/iu.test(text)) return "fr";
 
   for (const language of supportedLanguages) {
     const phrases = [
@@ -216,9 +223,9 @@ async function detectLanguage(client: GoogleGenAI, text: string): Promise<Suppor
 }
 
 function isEmergency(text: string) {
-  const normalized = text.toLocaleLowerCase().replace(/\s+/g, " ").trim();
+  const normalized = normalizeMessageForMatch(text);
   return emergencyKeywords.some((keyword) =>
-    normalized.includes(keyword.toLocaleLowerCase()),
+    normalized.includes(normalizeMessageForMatch(keyword)),
   );
 }
 
@@ -237,7 +244,14 @@ function stripMarkdown(text: string) {
 }
 
 function truncateCharacters(text: string, maxCharacters: number) {
-  return Array.from(text).slice(0, Math.max(0, maxCharacters)).join("").trimEnd();
+  const characters = Array.from(text);
+  if (characters.length <= maxCharacters) return text.trimEnd();
+
+  const truncated = characters.slice(0, Math.max(0, maxCharacters)).join("");
+  const sentenceEnds = [...truncated.matchAll(/[.!?؟۔。…]+(?=\s|$)/gu)];
+  const lastSentenceEnd = sentenceEnds.at(-1);
+  if (!lastSentenceEnd || lastSentenceEnd.index === undefined) return "";
+  return truncated.slice(0, lastSentenceEnd.index + lastSentenceEnd[0].length).trimEnd();
 }
 
 function makeSafeReply(
@@ -255,8 +269,9 @@ function makeSafeReply(
   const prefix = emergencyNotice ? `${emergencyNotice}\n\n` : "";
   const suffix = `\n\n${disclaimer}`;
   const maxAnswerCharacters =
-    1000 - Array.from(prefix).length - Array.from(suffix).length;
+    700 - Array.from(prefix).length - Array.from(suffix).length;
   answer = truncateCharacters(answer, maxAnswerCharacters);
+  if (!answer) answer = friendlyFallbacks[language];
 
   return `${prefix}${answer}${suffix}`;
 }
@@ -278,7 +293,8 @@ Provide general health information, basic self-care guidance, and when to seek p
 Never diagnose, prescribe medication, or claim certainty.
 ${emergencyInstruction}
 End every reply with this exact disclaimer: ${disclaimer}
-Use plain text only, with no markdown. Keep the entire reply under 1000 characters.
+Use plain text only, with no markdown. Keep the entire reply under 700 characters and finish on a complete sentence.
+Use correct standard spelling and diacritics in the reply: French accents; Hausa letters ɓ, ɗ, ƙ, and ƴ where appropriate; Igbo dot marks such as ị, ọ, and ụ; and full Yoruba tone marks and underdots. For example, write “máa lọ,” never “ma lo.”
 
 User message:
 ${text}`;
