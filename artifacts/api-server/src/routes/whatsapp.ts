@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { GoogleGenAI } from "@google/genai";
 import { logger } from "../lib/logger.js";
 import {
@@ -407,20 +407,23 @@ function createFailureReply(
   return `${message}\n\n${disclaimers[language]}`;
 }
 
-function isDuplicateMessage(messageId: string) {
+function isDuplicateMessage(
+  messageId: string,
+  messageIds = recentlySeenMessageIds,
+) {
   if (!messageId) return false;
 
   const now = Date.now();
-  for (const [knownId, expiresAt] of recentlySeenMessageIds) {
-    if (expiresAt <= now) recentlySeenMessageIds.delete(knownId);
+  for (const [knownId, expiresAt] of messageIds) {
+    if (expiresAt <= now) messageIds.delete(knownId);
   }
 
-  if (recentlySeenMessageIds.has(messageId)) return true;
-  if (recentlySeenMessageIds.size >= MAX_TRACKED_MESSAGE_IDS) {
-    const oldestId = recentlySeenMessageIds.keys().next().value;
-    if (oldestId) recentlySeenMessageIds.delete(oldestId);
+  if (messageIds.has(messageId)) return true;
+  if (messageIds.size >= MAX_TRACKED_MESSAGE_IDS) {
+    const oldestId = messageIds.keys().next().value;
+    if (oldestId) messageIds.delete(oldestId);
   }
-  recentlySeenMessageIds.set(messageId, now + MESSAGE_ID_TTL_MS);
+  messageIds.set(messageId, now + MESSAGE_ID_TTL_MS);
   return false;
 }
 
@@ -436,83 +439,127 @@ function safeErrorMessage(error: unknown) {
   return message.replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
 }
 
-async function processWhatsAppWebhook(body: any) {
-  try {
-    const value = body?.entry?.[0]?.changes?.[0]?.value;
-    const message = value?.messages?.[0];
-    if (!message) return;
+interface WhatsAppWebhookProcessorOptions {
+  generateReply?: (
+    text: string,
+    fallbackLanguage: SupportedLanguage,
+  ) => Promise<{ language: SupportedLanguage; reply: string }>;
+  sendMessage?: (to: string, reply: string) => Promise<void>;
+  logger?: Pick<typeof logger, "info" | "error">;
+  messageIds?: Map<string, number>;
+}
 
-    const sender = typeof message.from === "string" ? message.from : "";
-    if (!sender) return;
+export function createWhatsAppWebhookProcessor(
+  options: WhatsAppWebhookProcessorOptions = {},
+) {
+  const processLogger = options.logger ?? logger;
+  const sendMessage = options.sendMessage ?? sendWhatsAppMessage;
+  const messageIds = options.messageIds ?? recentlySeenMessageIds;
+  const generateReply = options.generateReply ?? (async (
+    text: string,
+    fallbackLanguage: SupportedLanguage,
+  ) => {
+    const client = getGeminiClient();
+    if (!client) throw new Error("Gemini API is not configured.");
+    return createHealthReply(client, text, fallbackLanguage);
+  });
 
-    const messageId = typeof message.id === "string" ? message.id.trim() : "";
-    if (isDuplicateMessage(messageId)) {
-      logger.info({ duplicate: true }, "Skipping duplicate WhatsApp webhook message");
-      return;
-    }
+  return async function processWhatsAppWebhook(body: any) {
+    try {
+      const value = body?.entry?.[0]?.changes?.[0]?.value;
+      const message = value?.messages?.[0];
+      if (!message) return;
 
-    let reply: string;
-    if (message.type === "text") {
-      const text = typeof message.text?.body === "string"
-        ? message.text.body.trim()
-        : "";
+      const sender = typeof message.from === "string" ? message.from : "";
+      if (!sender) return;
 
-      if (!text) {
-        const language = getKnownLanguage(message, value) ?? "en";
-        reply = friendlyFallbacks[language];
-      } else {
-        const shortReply = getShortConversationReply(text);
-        if (shortReply) {
-          reply = shortReply.reply;
+      const messageId = typeof message.id === "string" ? message.id.trim() : "";
+      if (isDuplicateMessage(messageId, messageIds)) {
+        processLogger.info({ duplicate: true }, "Skipping duplicate WhatsApp webhook message");
+        return;
+      }
+
+      let reply: string;
+      if (message.type === "text") {
+        const text = typeof message.text?.body === "string"
+          ? message.text.body.trim()
+          : "";
+
+        if (!text) {
+          const language = getKnownLanguage(message, value) ?? "en";
+          reply = friendlyFallbacks[language];
         } else {
-          let language =
-            getKnownLanguage(message, value) ?? guessLanguageFromText(text);
-          const emergency = isEmergency(text);
-          try {
-            const client = getGeminiClient();
-            if (!client) throw new Error("Gemini API is not configured.");
-            const generated = await createHealthReply(client, text, language);
-            language = generated.language;
-            reply = generated.reply;
-          } catch (error) {
-            const failure = getGeminiFailureMetadata(error);
-            logger.error(
-              {
-                failureKind: failure.kind,
-                ...(failure.status ? { httpStatus: failure.status } : {}),
-              },
-              "WhatsApp Gemini generation failed; using localized fallback",
-            );
-            reply = createFailureReply(
-              language,
-              emergency,
-              failure.kind === "quota",
-            );
+          const shortReply = getShortConversationReply(text);
+          if (shortReply) {
+            reply = shortReply.reply;
+          } else {
+            let language =
+              getKnownLanguage(message, value) ?? guessLanguageFromText(text);
+            const emergency = isEmergency(text);
+            try {
+              const generated = await generateReply(text, language);
+              language = generated.language;
+              reply = generated.reply;
+            } catch (error) {
+              const failure = getGeminiFailureMetadata(error);
+              processLogger.error(
+                {
+                  failureKind: failure.kind,
+                  ...(failure.status ? { httpStatus: failure.status } : {}),
+                },
+                "WhatsApp Gemini generation failed; using localized fallback",
+              );
+              reply = createFailureReply(
+                language,
+                emergency,
+                failure.kind === "quota",
+              );
+            }
           }
         }
+      } else {
+        let language = getKnownLanguage(message, value);
+        const caption = getCaption(message);
+        if (!language && caption) language = guessLanguageFromText(caption);
+        reply = textOnlyReplies[language ?? "en"];
       }
-    } else {
-      let language = getKnownLanguage(message, value);
-      const caption = getCaption(message);
-      if (!language && caption) language = guessLanguageFromText(caption);
-      reply = textOnlyReplies[language ?? "en"];
-    }
 
-    await sendWhatsAppMessage(sender, reply);
-  } catch (error) {
-    const graphFailure = error instanceof WhatsAppGraphApiError;
-    logger.error(
-      graphFailure
-        ? {
-            failureKind: error.kind,
-            ...(error.status ? { httpStatus: error.status } : {}),
-          }
-        : {
-            errorType: error instanceof Error ? error.name : "UnknownError",
-          },
-      "WhatsApp webhook message processing failed",
-    );
-  }
+      await sendMessage(sender, reply);
+    } catch (error) {
+      const graphFailure = error instanceof WhatsAppGraphApiError;
+      processLogger.error(
+        graphFailure
+          ? {
+              failureKind: error.kind,
+              ...(error.status ? { httpStatus: error.status } : {}),
+            }
+          : {
+              errorType: error instanceof Error ? error.name : "UnknownError",
+            },
+        "WhatsApp webhook message processing failed",
+      );
+    }
+  };
+}
+
+const processWhatsAppWebhook = createWhatsAppWebhookProcessor();
+
+export function createWhatsAppPostHandler(
+  processWebhook: (body: any) => void | Promise<void> = processWhatsAppWebhook,
+) {
+  return (req: Request, res: Response) => {
+    try {
+      const body = req.body;
+      res.sendStatus(200);
+      void processWebhook(body);
+    } catch (error) {
+      logger.error(
+        { error: safeErrorMessage(error) },
+        "WhatsApp webhook request handling failed",
+      );
+      if (!res.headersSent) res.sendStatus(200);
+    }
+  };
 }
 
 // GET for verification - ROOT "/"
@@ -531,18 +578,6 @@ router.get("/", (req, res) => {
 });
 
 // POST for messages - ROOT "/"
-router.post("/", (req, res) => {
-  try {
-    const body = req.body;
-    res.sendStatus(200);
-    void processWhatsAppWebhook(body);
-  } catch (error) {
-    logger.error(
-      { error: safeErrorMessage(error) },
-      "WhatsApp webhook request handling failed",
-    );
-    if (!res.headersSent) res.sendStatus(200);
-  }
-});
+router.post("/", createWhatsAppPostHandler());
 
 export default router;
