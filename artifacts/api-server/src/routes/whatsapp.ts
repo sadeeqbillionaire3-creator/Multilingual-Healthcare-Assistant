@@ -16,7 +16,18 @@ const supportedLanguages = ["en", "ha", "fr", "ar", "yo", "ig", "pcm"] as const;
 type SupportedLanguage = (typeof supportedLanguages)[number];
 const MAX_TRACKED_MESSAGE_IDS = 10_000;
 const MESSAGE_ID_TTL_MS = 24 * 60 * 60 * 1000;
-const recentlySeenMessageIds = new Map<string, number>();
+const MESSAGE_PROCESSING_TTL_MS = 2 * 60 * 1000;
+const MAX_MESSAGE_ATTEMPTS = 3;
+
+type MessageIdState = "processing" | "retryable" | "sent" | "uncertain" | "exhausted";
+
+interface MessageIdRecord {
+  state: MessageIdState;
+  attempts: number;
+  expiresAt: number;
+}
+
+const recentlySeenMessageIds = new Map<string, MessageIdRecord>();
 
 const emergencyMessages: Record<SupportedLanguage, string> = {
   en: "This sounds like an emergency. Please seek immediate medical care, go to the nearest hospital, or call emergency services now.",
@@ -407,24 +418,108 @@ function createFailureReply(
   return `${message}\n\n${disclaimers[language]}`;
 }
 
-function isDuplicateMessage(
-  messageId: string,
-  messageIds = recentlySeenMessageIds,
+function expireMessageIds(
+  messageIds: Map<string, MessageIdRecord>,
+  now: number,
 ) {
-  if (!messageId) return false;
+  for (const [knownId, record] of messageIds) {
+    if (record.expiresAt > now) continue;
 
-  const now = Date.now();
-  for (const [knownId, expiresAt] of messageIds) {
-    if (expiresAt <= now) messageIds.delete(knownId);
+    if (record.state === "processing") {
+      messageIds.set(knownId, {
+        ...record,
+        state: record.attempts < MAX_MESSAGE_ATTEMPTS ? "retryable" : "exhausted",
+        expiresAt: now + MESSAGE_ID_TTL_MS,
+      });
+    } else {
+      messageIds.delete(knownId);
+    }
+  }
+}
+
+function claimMessageId(
+  messageId: string,
+  messageIds: Map<string, MessageIdRecord>,
+  now: number,
+): "claimed" | "duplicate" | "capacity" {
+  if (!messageId) return "claimed";
+  expireMessageIds(messageIds, now);
+
+  const existing = messageIds.get(messageId);
+  if (existing) {
+    if (existing.state !== "retryable") return "duplicate";
+    if (existing.attempts >= MAX_MESSAGE_ATTEMPTS) {
+      messageIds.set(messageId, {
+        ...existing,
+        state: "exhausted",
+        expiresAt: now + MESSAGE_ID_TTL_MS,
+      });
+      return "duplicate";
+    }
+
+    messageIds.set(messageId, {
+      ...existing,
+      state: "processing",
+      attempts: existing.attempts + 1,
+      expiresAt: now + MESSAGE_PROCESSING_TTL_MS,
+    });
+    return "claimed";
   }
 
-  if (messageIds.has(messageId)) return true;
-  if (messageIds.size >= MAX_TRACKED_MESSAGE_IDS) {
-    const oldestId = messageIds.keys().next().value;
-    if (oldestId) messageIds.delete(oldestId);
-  }
-  messageIds.set(messageId, now + MESSAGE_ID_TTL_MS);
-  return false;
+  if (messageIds.size >= MAX_TRACKED_MESSAGE_IDS) return "capacity";
+
+  messageIds.set(messageId, {
+    state: "processing",
+    attempts: 1,
+    expiresAt: now + MESSAGE_PROCESSING_TTL_MS,
+  });
+  return "claimed";
+}
+
+function setMessageIdState(
+  messageId: string,
+  messageIds: Map<string, MessageIdRecord>,
+  state: MessageIdState,
+  now: number,
+) {
+  const existing = messageIds.get(messageId);
+  if (!existing) return;
+
+  messageIds.set(messageId, {
+    ...existing,
+    state,
+    expiresAt: now + (
+      state === "processing" ? MESSAGE_PROCESSING_TTL_MS : MESSAGE_ID_TTL_MS
+    ),
+  });
+}
+
+function isDefiniteWhatsAppSendFailure(error: unknown) {
+  if (!(error instanceof WhatsAppGraphApiError)) return false;
+  if (error.kind === "configuration") return true;
+
+  return (
+    error.kind === "rejected" &&
+    typeof error.status === "number" &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408
+  );
+}
+
+function markMessageFailure(
+  messageId: string,
+  messageIds: Map<string, MessageIdRecord>,
+  definite: boolean,
+  now: number,
+) {
+  const record = messageIds.get(messageId);
+  if (!record) return;
+
+  const nextState: MessageIdState = definite
+    ? record.attempts < MAX_MESSAGE_ATTEMPTS ? "retryable" : "exhausted"
+    : "uncertain";
+  setMessageIdState(messageId, messageIds, nextState, now);
 }
 
 function safeErrorMessage(error: unknown) {
@@ -446,7 +541,8 @@ interface WhatsAppWebhookProcessorOptions {
   ) => Promise<{ language: SupportedLanguage; reply: string }>;
   sendMessage?: (to: string, reply: string) => Promise<void>;
   logger?: Pick<typeof logger, "info" | "error">;
-  messageIds?: Map<string, number>;
+  messageIds?: Map<string, MessageIdRecord>;
+  now?: () => number;
 }
 
 export function createWhatsAppWebhookProcessor(
@@ -455,6 +551,7 @@ export function createWhatsAppWebhookProcessor(
   const processLogger = options.logger ?? logger;
   const sendMessage = options.sendMessage ?? sendWhatsAppMessage;
   const messageIds = options.messageIds ?? recentlySeenMessageIds;
+  const now = options.now ?? Date.now;
   const generateReply = options.generateReply ?? (async (
     text: string,
     fallbackLanguage: SupportedLanguage,
@@ -465,6 +562,10 @@ export function createWhatsAppWebhookProcessor(
   });
 
   return async function processWhatsAppWebhook(body: any) {
+    let messageId = "";
+    let claimedMessageId = false;
+    let outboundAttemptStarted = false;
+
     try {
       const value = body?.entry?.[0]?.changes?.[0]?.value;
       const message = value?.messages?.[0];
@@ -473,10 +574,24 @@ export function createWhatsAppWebhookProcessor(
       const sender = typeof message.from === "string" ? message.from : "";
       if (!sender) return;
 
-      const messageId = typeof message.id === "string" ? message.id.trim() : "";
-      if (isDuplicateMessage(messageId, messageIds)) {
-        processLogger.info({ duplicate: true }, "Skipping duplicate WhatsApp webhook message");
-        return;
+      messageId = typeof message.id === "string" ? message.id.trim() : "";
+      if (messageId) {
+        const claim = claimMessageId(messageId, messageIds, now());
+        if (claim === "duplicate") {
+          processLogger.info(
+            { duplicate: true },
+            "Skipping duplicate WhatsApp webhook message",
+          );
+          return;
+        }
+        if (claim === "capacity") {
+          processLogger.error(
+            { trackedMessageIds: messageIds.size },
+            "WhatsApp webhook message skipped because duplicate tracking is full",
+          );
+          return;
+        }
+        claimedMessageId = true;
       }
 
       let reply: string;
@@ -524,8 +639,24 @@ export function createWhatsAppWebhookProcessor(
         reply = textOnlyReplies[language ?? "en"];
       }
 
+      if (claimedMessageId) {
+        setMessageIdState(messageId, messageIds, "uncertain", now());
+      }
+      outboundAttemptStarted = true;
       await sendMessage(sender, reply);
+      if (claimedMessageId) {
+        setMessageIdState(messageId, messageIds, "sent", now());
+      }
     } catch (error) {
+      if (claimedMessageId && messageId) {
+        markMessageFailure(
+          messageId,
+          messageIds,
+          !outboundAttemptStarted || isDefiniteWhatsAppSendFailure(error),
+          now(),
+        );
+      }
+
       const graphFailure = error instanceof WhatsAppGraphApiError;
       processLogger.error(
         graphFailure
@@ -581,3 +712,5 @@ router.get("/", (req, res) => {
 router.post("/", createWhatsAppPostHandler());
 
 export default router;
+
+export { WhatsAppGraphApiError };

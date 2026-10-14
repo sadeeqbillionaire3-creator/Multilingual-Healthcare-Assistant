@@ -259,7 +259,7 @@ test("exhausts persistent Gemini 503 retries, selects French fallback, and submi
   assert.equal(JSON.stringify(logs.entries).includes("UNAVAILABLE"), false);
 });
 
-test("after a fallback send rejection, redelivery of the same ID is acknowledged but not resent", async () => {
+test("an ambiguous fallback send outcome suppresses an immediate duplicate", async () => {
   let generationCalls = 0;
   const outboundAttempts = [];
   const ackStatuses = [];
@@ -274,7 +274,7 @@ test("after a fallback send rejection, redelivery of the same ID is acknowledged
     },
     sendMessage: async (to, reply) => {
       outboundAttempts.push({ to, reply });
-      throw new Error("mock Graph rejection: Bearer mock-token private fallback");
+      throw new whatsappRoute.WhatsAppGraphApiError("timeout");
     },
   });
   const event = createTextEvent("wamid-send-failure", "Bonjour, j'ai une question");
@@ -306,6 +306,218 @@ test("after a fallback send rejection, redelivery of the same ID is acknowledged
   assert.equal(serializedLogs.includes("mock-token"), false);
   assert.equal(serializedLogs.includes("private fallback"), false);
   assert.equal(serializedLogs.includes("Skipping duplicate"), true);
+});
+
+test("concurrent deliveries of one message ID run only one processor", async () => {
+  let generationCalls = 0;
+  let finishGeneration;
+  const generationGate = new Promise((resolve) => {
+    finishGeneration = resolve;
+  });
+  const sentMessages = [];
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds: new Map(),
+    logger: captureLogger().logger,
+    generateReply: async (_text, language) => {
+      generationCalls += 1;
+      await generationGate;
+      return { language, reply: "A single reply for this message." };
+    },
+    sendMessage: async (to, reply) => {
+      sentMessages.push({ to, reply });
+    },
+  });
+  const event = createTextEvent("wamid-concurrent", "I have a health question");
+
+  const firstDelivery = processor(event);
+  assert.equal(generationCalls, 1);
+  await processor(event);
+  assert.equal(generationCalls, 1);
+  assert.equal(sentMessages.length, 0);
+
+  finishGeneration();
+  await firstDelivery;
+  assert.equal(sentMessages.length, 1);
+});
+
+test("a successful send suppresses later deliveries of the same ID", async () => {
+  let generationCalls = 0;
+  const sentMessages = [];
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds: new Map(),
+    logger: captureLogger().logger,
+    generateReply: async (_text, language) => {
+      generationCalls += 1;
+      return { language, reply: "A single reply for this message." };
+    },
+    sendMessage: async (to, reply) => {
+      sentMessages.push({ to, reply });
+    },
+  });
+  const event = createTextEvent("wamid-success", "I have a health question");
+
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+
+  assert.equal(generationCalls, 1);
+  assert.equal(sentMessages.length, 1);
+});
+
+test("a definite pre-send processing failure releases the ID for a retry", async () => {
+  let generationCalls = 0;
+  const sentMessages = [];
+  const logs = captureLogger();
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds: new Map(),
+    logger: logs.logger,
+    generateReply: async (_text, language) => {
+      generationCalls += 1;
+      return { language, reply: "The retry was processed." };
+    },
+    sendMessage: async (to, reply) => {
+      sentMessages.push({ to, reply });
+    },
+  });
+  const brokenMessage = {
+    id: "wamid-processing-failure",
+    from: "15550000000",
+    type: "text",
+    get text() {
+      throw new Error("mock processing failure");
+    },
+  };
+  const brokenEvent = {
+    entry: [{ changes: [{ value: { messages: [brokenMessage] } }] }],
+  };
+
+  await processor(brokenEvent);
+  await deliverWebhook(
+    processor,
+    createTextEvent("wamid-processing-failure", "I have a health question"),
+  );
+
+  assert.equal(generationCalls, 1);
+  assert.equal(sentMessages.length, 1);
+  assert.equal(
+    JSON.stringify(logs.entries).includes("mock processing failure"),
+    false,
+  );
+});
+
+test("a definite Graph rejection permits a retry and success suppresses later duplicates", async () => {
+  let sendAttempts = 0;
+  let generationCalls = 0;
+  const sentMessages = [];
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds: new Map(),
+    logger: captureLogger().logger,
+    generateReply: async (_text, language) => {
+      generationCalls += 1;
+      return { language, reply: "A retryable reply." };
+    },
+    sendMessage: async (to, reply) => {
+      sendAttempts += 1;
+      if (sendAttempts === 1) {
+        throw new whatsappRoute.WhatsAppGraphApiError("rejected", 400);
+      }
+      sentMessages.push({ to, reply });
+    },
+  });
+  const event = createTextEvent("wamid-definite-rejection", "I have a health question");
+
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+
+  assert.equal(sendAttempts, 2);
+  assert.equal(generationCalls, 2);
+  assert.equal(sentMessages.length, 1);
+});
+
+test("definite failures stop after the configured bounded attempts", async () => {
+  let sendAttempts = 0;
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds: new Map(),
+    logger: captureLogger().logger,
+    generateReply: async (_text, language) => ({
+      language,
+      reply: "This send will be rejected.",
+    }),
+    sendMessage: async () => {
+      sendAttempts += 1;
+      throw new whatsappRoute.WhatsAppGraphApiError("rejected", 400);
+    },
+  });
+  const event = createTextEvent("wamid-bounded-rejections", "I have a health question");
+
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+
+  assert.equal(sendAttempts, 3);
+});
+
+test("an uncertain send is suppressed for a bounded period, then becomes retryable", async () => {
+  let currentTime = 0;
+  let sendAttempts = 0;
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds: new Map(),
+    now: () => currentTime,
+    logger: captureLogger().logger,
+    generateReply: async (_text, language) => ({
+      language,
+      reply: "The Graph outcome is uncertain.",
+    }),
+    sendMessage: async () => {
+      sendAttempts += 1;
+      throw new whatsappRoute.WhatsAppGraphApiError("timeout");
+    },
+  });
+  const event = createTextEvent("wamid-uncertain-expiry", "I have a health question");
+
+  await deliverWebhook(processor, event);
+  await deliverWebhook(processor, event);
+  assert.equal(sendAttempts, 1);
+
+  currentTime += 24 * 60 * 60 * 1000 + 1;
+  await deliverWebhook(processor, event);
+  assert.equal(sendAttempts, 2);
+});
+
+test("tracking capacity preserves existing duplicate records and skips new IDs safely", async () => {
+  const now = Date.now();
+  const messageIds = new Map(
+    Array.from({ length: 10_000 }, (_, index) => [
+      `wamid-known-${index}`,
+      { state: "sent", attempts: 1, expiresAt: now + 24 * 60 * 60 * 1000 },
+    ]),
+  );
+  let generationCalls = 0;
+  let sendAttempts = 0;
+  const logs = captureLogger();
+  const processor = whatsappRoute.createWhatsAppWebhookProcessor({
+    messageIds,
+    logger: logs.logger,
+    generateReply: async (_text, language) => {
+      generationCalls += 1;
+      return { language, reply: "This should not be generated." };
+    },
+    sendMessage: async () => {
+      sendAttempts += 1;
+    },
+  });
+
+  await processor(createTextEvent("wamid-new-at-capacity", "Hello"));
+
+  assert.equal(messageIds.size, 10_000);
+  assert.equal(messageIds.has("wamid-known-0"), true);
+  assert.equal(generationCalls, 0);
+  assert.equal(sendAttempts, 0);
+  assert.equal(
+    JSON.stringify(logs.entries).includes("duplicate tracking is full"),
+    true,
+  );
 });
 
 test("different Meta IDs with identical text are processed independently", async () => {

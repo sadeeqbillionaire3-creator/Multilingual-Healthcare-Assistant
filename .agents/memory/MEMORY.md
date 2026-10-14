@@ -1,1 +1,2 @@
 - [MediLingua deployment constraints](medilingua-deployment.md) — preserve the live app and its previously working WhatsApp integration; make targeted backend changes.
+- [WhatsApp delivery certainty](whatsapp-delivery-certainty.md) — do not immediately retry ambiguous Graph outcomes; a lost response can mean Meta accepted the reply.
