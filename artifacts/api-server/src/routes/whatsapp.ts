@@ -53,7 +53,7 @@ const emergencyKeywords = [
   // English
   "chest pain", "can't breathe", "cannot breathe", "difficulty breathing", "shortness of breath", "heavy bleeding", "unconscious", "stroke", "heart attack", "suicidal",
   // Hausa
-  "ciwon kirji", "ba zan iya numfashi ba", "wahalar numfashi", "zubar jini mai yawa", "suma", "bugun jini",
+  "ciwon kirji", "ba zan iya numfashi ba", "wahalar numfashi", "zubar jini mai yawa", "suma", "bugun jini", "ina jin ciwon kirji", "ciwon zuciya", "matsalar numfashi", "wahalar numfashi sosai", "na kasa numfashi", "ba na iya numfashi", "numfashi ya kasa", "ba zan iya yin numfashi", "chest hurts", "chest is hurting", "pain in my chest", "hard to breathe", "trouble breathing", "struggling to breathe", "bana iya numfashi", "bana iya numfashi ba", "ba na iya numfashi ba", "bani iya numfashi", "ba ni iya numfashi", "na kasa numfashi", "numfashina ya kasa", "ina fama da numfashi", "ina jin ciwon zuciya",
   // French
   "douleur thoracique", "ne peux pas respirer", "difficulté à respirer", "essoufflement", "saignement abondant", "inconscient", "avc", "crise cardiaque", "suicidaire",
   // Arabic
@@ -157,6 +157,10 @@ function getModel() {
 function normalizeMessageForMatch(text: string) {
   return text
     .toLocaleLowerCase()
+    .replace(/ɓ/g, "b")
+    .replace(/ɗ/g, "d")
+    .replace(/ƙ/g, "k")
+    .replace(/ƴ/g, "y")
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
