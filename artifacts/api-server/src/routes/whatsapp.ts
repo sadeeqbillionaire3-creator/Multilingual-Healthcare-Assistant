@@ -339,6 +339,58 @@ ${text}`;
   };
 }
 
+async function downloadWhatsAppAudio(
+  mediaId: string,
+): Promise<{ data: string; mimeType: string }> {
+  const accessToken = process.env.WHATSAPP_TOKEN;
+  if (!accessToken) throw new WhatsAppGraphApiError("configuration");
+  const metaRes = await fetch(
+    `https://graph.facebook.com/v21.0/${encodeURIComponent(mediaId)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!metaRes.ok) throw new Error(`Media lookup failed (${metaRes.status})`);
+  const meta = (await metaRes.json()) as { url?: string; mime_type?: string };
+  if (!meta.url) throw new Error("No media URL returned.");
+  const fileRes = await fetch(meta.url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!fileRes.ok) throw new Error(`Audio download failed (${fileRes.status})`);
+  const buffer = Buffer.from(await fileRes.arrayBuffer());
+  if (buffer.length > 10 * 1024 * 1024) throw new Error("Audio too large.");
+  return {
+    data: buffer.toString("base64"),
+    mimeType: (meta.mime_type ?? "audio/ogg").split(";")[0],
+  };
+}
+
+async function transcribeVoiceNote(
+  client: GoogleGenAI,
+  audio: { data: string; mimeType: string },
+): Promise<string> {
+  const result = await generateWithGeminiRecovery(
+    (signal) =>
+      client.models.generateContent({
+        model: getModel(),
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: "Transcribe this voice note exactly, in the language spoken. Return only the transcript.",
+              },
+              { inlineData: { mimeType: audio.mimeType, data: audio.data } },
+            ],
+          },
+        ],
+        config: { abortSignal: signal },
+      }),
+    {},
+  );
+  const transcript = result.text?.trim();
+  if (!transcript) throw new Error("Empty transcript.");
+  return transcript;
+}
+
 function parseKnownLanguage(value: unknown): SupportedLanguage | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().toLowerCase().replace(/[_-].*$/, "");
@@ -592,6 +644,21 @@ export function createWhatsAppWebhookProcessor(
           return;
         }
         claimedMessageId = true;
+      }
+
+      if (message.type === "audio" && message.audio?.id) {
+        try {
+          const audioClient = getGeminiClient();
+          if (!audioClient) throw new Error("Gemini API is not configured.");
+          const audio = await downloadWhatsAppAudio(message.audio.id);
+          const transcript = await transcribeVoiceNote(audioClient, audio);
+          Object.assign(message, { type: "text", text: { body: transcript } });
+        } catch (error) {
+          processLogger.error(
+            { err: safeErrorMessage(error) },
+            "WhatsApp voice note transcription failed",
+          );
+        }
       }
 
       let reply: string;
