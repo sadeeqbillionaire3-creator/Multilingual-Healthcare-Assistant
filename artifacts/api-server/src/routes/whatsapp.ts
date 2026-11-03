@@ -9,6 +9,7 @@ import {
   submitWhatsAppText,
   WhatsAppGraphApiError,
 } from "../lib/whatsapp-cloud.js";
+import { getFaqReply, getCachedReply, setCachedReply } from "../lib/faq.js";
 
 const router = Router();
 
@@ -304,6 +305,14 @@ async function createHealthReply(
   fallbackLanguage: SupportedLanguage,
 ): Promise<{ language: SupportedLanguage; reply: string }> {
   const emergency = isEmergency(text);
+if (!emergency) {
+const faq = getFaqReply(text, fallbackLanguage);
+if (faq) {
+return { language: faq.language, reply: makeSafeReply(faq.reply, faq.language, false) };
+}
+const cached = getCachedReply(text);
+if (cached) return cached;
+}
   const prompt = `You are MediLingua Health AI.
 Identify the user's language and reply in that same language. Supported languages are English (en), Hausa (ha), French (fr), Arabic (ar), Yoruba (yo), Igbo (ig), and Nigerian Pidgin (pcm). If the language is unclear, use this hint: ${fallbackLanguage}.
 Provide general health information, basic self-care guidance, and when to seek professional care.
@@ -337,10 +346,12 @@ ${text}`;
 
   const parsed = parseModelReply(generatedReply, fallbackLanguage);
   if (!parsed.reply) throw new Error("Gemini returned an empty reply.");
-  return {
-    language: parsed.language,
-    reply: makeSafeReply(parsed.reply, parsed.language, emergency),
-  };
+const finalReply = {
+language: parsed.language,
+reply: makeSafeReply(parsed.reply, parsed.language, emergency),
+};
+if (!emergency) setCachedReply(text, finalReply);
+return finalReply;
 }
 
 async function downloadWhatsAppAudio(
