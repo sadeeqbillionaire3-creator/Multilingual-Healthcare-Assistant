@@ -44,6 +44,20 @@ const faqEntries: FaqEntry[] = [
       ha: "Idan kana gudawa: ka sha ruwa da yawa kuma ka yi amfani da ORS idan akwai. Ci abinci mai sauƙi. Ka je asibiti da sauri idan akwai jini a bayan gida, rauni sosai, fitsari kaɗan, ko yaro ko tsoho ba ya iya riƙe ruwa.",
     },
   },
+{
+keywords: ["stomach pain", "stomach ache", "belly pain", "ciwon ciki"],
+replies: {
+en: "For mild stomach pain: rest, sip water, eat light food, and avoid spicy or oily food. Go to a clinic quickly if the pain is severe or constant, or you have fever, repeated vomiting, blood in vomit or stool, a hard swollen belly, or you are pregnant.",
+ha: "Idan ciwon ciki bai yi tsanani ba: ka huta, ka sha ruwa kaɗan-kaɗan, ka ci abinci mai sauƙi, ka guji abinci mai yaji ko mai. Ka je asibiti da sauri idan ciwon ya yi tsanani ko bai tsaya ba, kana da zazzabi, amai akai-akai, jini a amai ko bayan gida, ciki ya kumbura ya yi tauri, ko kana da juna biyu.",
+},
+},
+{
+keywords: ["what is cancer", "signs of cancer", "cancer symptoms", "ciwon daji"],
+replies: {
+en: "Cancer is a disease where body cells grow abnormally. Early signs can include a lump that does not go away, unexplained weight loss, a long-lasting cough or sore, or unusual bleeding. These can have other causes too, so see a doctor for a check. Finding it early helps treatment work better.",
+ha: "Ciwon daji cuta ce da sassan jiki ke girma ba yadda ya kamata ba. Alamun farko na iya zama kumburi da ba ya warkewa, rama ba gaira ba dalili, tari ko ciwo da ya daɗe, ko zubar jini da ba a saba gani ba. Waɗannan na iya zama wasu cututtuka ma, don haka ka je asibiti a duba ka. Gano shi da wuri yana taimaka wa magani.",
+},
+},
   // Add more entries here the same way
 ];
 

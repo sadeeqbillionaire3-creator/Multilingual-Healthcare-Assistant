@@ -138,7 +138,7 @@ const busyReplies: Record<SupportedLanguage, string> = {
 };
 
 const languageIndicators: Partial<Record<SupportedLanguage, string[]>> = {
-  ha: ["nagode", "na gode", "sannu", "ciwon", "barka da", "don Allah", "ina jin", "ba zan iya"],
+  ha: ["nagode", "na gode", "sannu", "ciwon", "barka da", "don Allah", "ina jin", "ba zan iya", "gudawa", "zazzabi", "cizon sauro", "amai"],
   fr: ["bonjour", "merci", "je suis", "j'ai", "douleur", "fièvre", "s'il vous plaît"],
   ar: ["شكرا", "شكرًا", "مرحبا", "السلام عليكم", "عندي", "ألم"],
   yo: ["e se", "ẹ ṣe", "bawo", "jowo", "jọ̀wọ́", "irora", "mo ni", "ara mi", "mo fẹ"],
